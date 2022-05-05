@@ -99,7 +99,7 @@ public class TorrentInfo
 	/**
 	 * The base URL of the tracker for client scrapes.
 	 */
-	public final URL announce_url;
+	public final String announce_url;
 	
 	/**
 	 * The default length of each piece in bytes.&nbsp; Note that the last piece may be irregularly-sized (less than the value of piece_length)
@@ -148,16 +148,11 @@ public class TorrentInfo
 		
 		try {
 			String url_string = new String(url_buff.array(), "ASCII");
-			URL announce_url = new URL(url_string);
-			this.announce_url = announce_url;
+			this.announce_url = url_string;
 		}
 		catch(UnsupportedEncodingException uee)
 		{
 			throw new BencodingException(uee.getLocalizedMessage());
-		}
-		catch(MalformedURLException murle)
-		{
-			throw new BencodingException(murle.getLocalizedMessage());
 		}
 		
 		// Try to extract the info dictionary
