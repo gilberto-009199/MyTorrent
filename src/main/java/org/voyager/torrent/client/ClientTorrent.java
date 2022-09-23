@@ -19,7 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.voyager.torrent.client.model.Peer;
+import org.voyager.torrent.client.connect.ManagerPeer;
+import org.voyager.torrent.client.connect.Peer;
 import org.voyager.torrent.util.BinaryUtil;
 import org.voyager.torrent.util.HttpUtil;
 import org.voyager.torrent.util.ReaderBencode;
@@ -28,7 +29,7 @@ import GivenTools.Bencoder2;
 import GivenTools.BencodingException;
 import GivenTools.TorrentInfo;
 
-public class ClientTorrent { 
+public class ClientTorrent implements ManagerPeer{ 
 	
 	public static String separator = System.getProperty("file.separator");
 	public static String dirUser = new File(System.getProperty("user.home")).getAbsolutePath()+separator;
@@ -45,6 +46,10 @@ public class ClientTorrent {
 	}
 	
 	public void start() throws BencodingException {
+		
+		List<Peer> listPeers = new ArrayList<Peer>(); 
+		
+		// Read my file torrent and announce_url
 		try {
 			
 			// generate binarie 20 
@@ -73,8 +78,7 @@ public class ClientTorrent {
 
 			// read response
 			StringBuffer res =  BinaryUtil.inputStreamReaderToStringBuffer( new InputStreamReader(con.getInputStream()) );
-			List<Peer> listPeers = new ArrayList<Peer>(); 
-			System.out.println(res);
+			//System.out.println(res);
 						
 			Map<ByteBuffer,Object> map = ReaderBencode.bencodeToMap(res);
 			
@@ -100,13 +104,6 @@ public class ClientTorrent {
 				listPeers.add( new Peer( ip, peerPort, peerIdBinary, this) ); 
 			}
 			
-			for(Peer peer : listPeers.subList(0, 1)) {
-				Thread thread = new Thread(peer);
-				System.out.println(peer);
-				thread.start();
-			}
-			
-			
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -115,6 +112,16 @@ public class ClientTorrent {
 			e.printStackTrace();
 		}
 		
+		
+		for(Peer peer : listPeers.subList(0, 4)) {
+			Thread thread = new Thread(peer);
+			System.out.println(peer);
+			try {
+				thread.start();
+			}catch (Exception e) {
+				System.out.println(e.getMessage());
+			}
+		}
 	}
 	
 	public boolean addTorentFile(String arquivo){
@@ -124,6 +131,30 @@ public class ClientTorrent {
 		this.torrent = ReaderBencode.parseTorrentFile(arquivo);
 		if(this.torrent == null)return false;
 		else return true;
+	}
+	public TorrentInfo getTorrent() {
+		return this.torrent;
+	}
+
+	public boolean connectError(Peer peer) {
+		System.out.println("Erro na conexao: "+peer);
+		
+		return false;
+	}
+
+	public boolean downloaded(Peer peer) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public boolean uploaded(Peer peer) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public boolean shakeHandsError(Peer peer) {
+		System.out.println("Erro no hasdshake: "+peer);
+		return false;
 	}
 
 }
