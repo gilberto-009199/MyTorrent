@@ -1,16 +1,13 @@
 package org.voyager.torrent;
 
-import java.io.File;
-
 import org.voyager.torrent.client.ClientTorrent;
-import org.voyager.torrent.util.ReaderBencode;
 
 import GivenTools.BencodingException;
 
 public class Main {
 
 	public static void main(String[] args) {
-		ClientTorrent mytorrent = new ClientTorrent();
+		ClientTorrent mytorrent = new ClientTorrent(true);
 		mytorrent.addTorentFile("./netinst.torrent");
 		try {
 			mytorrent.start();

@@ -8,8 +8,6 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Arrays;
 
-import org.voyager.torrent.client.ClientTorrent;
-import org.voyager.torrent.client.exceptions.ConnectException;
 import org.voyager.torrent.util.BinaryUtil;
 
 public class Peer implements Runnable{
@@ -37,6 +35,7 @@ public class Peer implements Runnable{
 	private Socket socket = null;
 	private InputStream in;
 	private OutputStream out;
+	private boolean verbouse;
 	public boolean isConnected = false; // CONNECT SOCKET
 	public boolean hasHandshake = false; // Connect Socket and shake Hands 
 	
@@ -74,34 +73,56 @@ public class Peer implements Runnable{
 						
 						byte[] buff = new byte[length];
 						dataInput.read(buff, 0, length);
-						/*
-						System.out.println(buff[0] == MsgUnchoke);
-						System.out.println(buff[0] == MsgInterested);
-						System.out.println(buff[0] == MsgNotInterested);
-						System.out.println(buff[0] == MsgHave);
-						System.out.println(buff[0] == MsgBitfield);
-						System.out.println(buff[0] == MsgRequest);
-						System.out.println(buff[0] == MsgPiece);
-						System.out.println(buff[0] == MsgCancel);
-						*/
+						
 						byte state = buff[0];
 						
 						switch(state) {
 							case MsgUnchoke:
+								if(verbouse)System.out.println(this+"\n:\tRecive MsgUnchoke");
+								if(verbouse)System.out.println("\t MsgUnchoke:");
+								if(verbouse)System.out.println("\t  Informa ao peer que ele foi bloqueado. Isso significa que o peer não poderá solicitar peças do arquivo.");
 								break;
 							case MsgInterested:
+								if(verbouse)System.out.println(this+"\n:\tRecive MsgInterested");
+								if(verbouse)System.out.println("\t MsgInterested:");
+								if(verbouse)System.out.println("\t  Indica que o peer está interessado em receber peças do arquivo. Geralmente enviado quando o peer detecta que outro possui peças que ele não tem.");
+
 								break;
 							case MsgNotInterested:
+								if(verbouse)System.out.println(this+"\n:\tRecive MsgNotInterested");
+								if(verbouse)System.out.println("\t MsgNotInterested:");
+								if(verbouse)System.out.println("\t  Indica que o peer não está interessado em receber peças do arquivo. Geralmente enviado quando o peer já possui todas as peças que o outro peer oferece.");
+
 								break;
 							case MsgHave:
+								if(verbouse)System.out.println(this+"\n:\tRecive MsgHave");
+								if(verbouse)System.out.println("\t MsgHave:");
+								if(verbouse)System.out.println("\t  Notifica ao peer que uma nova peça do arquivo foi baixada e está disponível. Essa mensagem ajuda a manter os peers atualizados sobre as peças disponíveis.");
+
 								break;
 							case MsgBitfield:
+								if(verbouse)System.out.println(this+"\n:\tRecive MsgBitfield");
+								if(verbouse)System.out.println("\t MsgBitfield:");
+								if(verbouse)System.out.println("\t  Envia um mapa de bits que representa todas as peças que o peer possui. É usado logo no início da conexão para informar o estado atual do peer.");
+								
+								// -1 iqual a ter 0 igual a não ter uma peça
+
 								break;
 							case MsgRequest:
+								if(verbouse)System.out.println(this+"\n:\tRecive MsgRequest");
+								if(verbouse)System.out.println("\t MsgRequest:");
+								if(verbouse)System.out.println("\t  Solicita uma peça específica do arquivo. Contém informações como o índice da peça e o deslocamento dentro dela.");
+
 								break;
 							case MsgPiece:
+								if(verbouse)System.out.println(this+"\n:\tRecive MsgPiece");
+								if(verbouse)System.out.println("\t MsgPiece:");
+								if(verbouse)System.out.println("\t  Transfere um pedaço de uma peça solicitada para o peer que fez o pedido. Contém os dados reais do arquivo.");
 								break;
 							case MsgCancel:
+								if(verbouse)System.out.println(this+"\n:\tRecive MsgCancel");
+								if(verbouse)System.out.println("\t MsgCancel:");
+								if(verbouse)System.out.println("\t  Cancela um pedido anterior de uma peça. Pode ser usado se o pedido não for mais necessário ou se houver um problema na conexão.");
 								break;
 						}
 						//handshake[index] = 0x13;
@@ -120,9 +141,7 @@ public class Peer implements Runnable{
 
 				
 				
-			} 
-			
-			
+			}
 			
 		}
 	}
@@ -152,10 +171,10 @@ public class Peer implements Runnable{
 			is.readFully(response);		
 			this.socket.setSoTimeout(130000);
 			
-			System.out.println(Arrays.toString(response));
+			//System.out.println(Arrays.toString(response));
 			if(checkHandshake(response)) {
 				hasHandshake = true;
-				System.out.println("Connect:\n\t"+ this);
+				if(verbouse)System.out.println("Connect & Shakeed:\n\t"+ this);
 			// no equals then stop thread for peer or wait
 			}else hasHandshake = false;
 			
@@ -296,6 +315,11 @@ public class Peer implements Runnable{
 	public void setOut(OutputStream out) {
 		this.out = out;
 	}
+	public void setVerbouse(boolean verbouse){
+		this.verbouse = verbouse;
+	}
+	public boolean getVerbouse(){ return this.verbouse; }
+
 	public String toString() {
 		return ("host: "+this.host+"\t port: "+this.port+"\t connect: "+this.isConnected+"\t hasHandshake: "+ this.hasHandshake );
 	}

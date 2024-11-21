@@ -5,7 +5,7 @@
    Que deus me ajude a terminar no natal kkk!!!
    
 ## Referencias
-   [WikiBitTorrent](https://wiki.theory.org/index.php/Main_Page)
+   [WikiBitTorrent](https://wiki.theory.org/Main_Page)
 	
 	
 
