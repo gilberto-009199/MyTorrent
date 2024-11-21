@@ -1,50 +1,43 @@
 package org.voyager.torrent.client;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.ServerSocket;
 import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import org.voyager.torrent.client.connect.ManagerPeer;
 import org.voyager.torrent.client.connect.Peer;
 import org.voyager.torrent.util.BinaryUtil;
 import org.voyager.torrent.util.HttpUtil;
+import org.voyager.torrent.util.PrintUtil;
 import org.voyager.torrent.util.ReaderBencode;
 
-import GivenTools.Bencoder2;
 import GivenTools.BencodingException;
 import GivenTools.TorrentInfo;
 
 public class ClientTorrent implements ManagerPeer{ 
-	
+
 	public static String separator = System.getProperty("file.separator");
 	public static String dirUser = new File(System.getProperty("user.home")).getAbsolutePath()+separator;
 	public static String dirRuntime = "."+separator;
-	 
-	
+
 	// torrent info e connets info
 	public TorrentInfo torrent;
+
+	private boolean verbouse;
 	public static int uploaded;
 	public static int downloaded;
-	
-	public ClientTorrent Build() {
-		return null;
-	}
-	
+
+	public ClientTorrent(boolean verbouse){ this.verbouse = verbouse; }
+
 	public void start() throws BencodingException {
 		
 		List<Peer> listPeers = new ArrayList<Peer>(); 
@@ -66,7 +59,7 @@ public class ClientTorrent implements ManagerPeer{
 			parameters.put("port", "-1"); // port connect
 			parameters.put("downloaded", "0"); 
 			parameters.put("left", torrent.file_length+"");
-			System.out.println(torrent.announce_url);
+			System.out.println(" Announce URL:  "+ torrent.announce_url);
 			
 			URL url_announce = new URL(torrent.announce_url+"?"+HttpUtil.getParamsString(parameters));
 			
@@ -78,12 +71,11 @@ public class ClientTorrent implements ManagerPeer{
 
 			// read response
 			StringBuffer res =  BinaryUtil.inputStreamReaderToStringBuffer( new InputStreamReader(con.getInputStream()) );
-			//System.out.println(res);
-						
+					
 			Map<ByteBuffer,Object> map = ReaderBencode.bencodeToMap(res);
 			
 			int interval = (Integer) map.get( BinaryUtil.stringToByteBuffer("interval") );
-			System.out.println( interval );
+			
 			
 			List<Map<ByteBuffer, Object>> peersList = (List<Map<ByteBuffer, Object>>) map.get(BinaryUtil.stringToByteBuffer("peers"));
 			
@@ -99,7 +91,6 @@ public class ClientTorrent implements ManagerPeer{
 					System.out.println("Unable to parse encoding");
 					continue;
 				}
-				//System.out.println("host: "+ip+"\t port: "+peerPort);
 				
 				listPeers.add( new Peer( ip, peerPort, peerIdBinary, this) ); 
 			}
@@ -111,11 +102,13 @@ public class ClientTorrent implements ManagerPeer{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
+		if(verbouse)System.out.println("Total de Pares: \n"+ listPeers.stream().map((peer) -> peer.toString()+"\n").toList());
 		
 		for(Peer peer : listPeers.subList(0, 4)) {
+			peer.setVerbouse(verbouse);
 			Thread thread = new Thread(peer);
-			System.out.println(peer);
+			if(verbouse)System.out.println("Try Connect: \n\t"+ peer);
 			try {
 				thread.start();
 			}catch (Exception e) {
