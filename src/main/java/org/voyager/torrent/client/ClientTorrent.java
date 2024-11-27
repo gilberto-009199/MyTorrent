@@ -33,8 +33,15 @@ public class ClientTorrent implements ManagerPeer{
 	public TorrentInfo torrent;
 
 	private boolean verbouse;
-	public static int uploaded;
-	public static int downloaded;
+
+	// state
+	// Map Pieces Downloaded from file
+	public Object mapPices;
+	// List Peers Connected
+	public List<Peer> listPeers;
+
+	public int uploaded;
+	public int downloaded;
 
 	public ClientTorrent(boolean verbouse){ this.verbouse = verbouse; }
 
@@ -55,8 +62,9 @@ public class ClientTorrent implements ManagerPeer{
 			Map<String, String> parameters = new HashMap<String,String>();
 			parameters.put("info_hash",info_hash);
 			parameters.put("peer_id", peerId); // identify par
-			parameters.put("uploaded", "0");
+			// Contruir o socket para enviar os Datagrams for peers 
 			parameters.put("port", "-1"); // port connect
+			parameters.put("uploaded", "0");
 			parameters.put("downloaded", "0"); 
 			parameters.put("left", torrent.file_length+"");
 			System.out.println(" Announce URL:  "+ torrent.announce_url);
@@ -73,9 +81,6 @@ public class ClientTorrent implements ManagerPeer{
 			StringBuffer res =  BinaryUtil.inputStreamReaderToStringBuffer( new InputStreamReader(con.getInputStream()) );
 					
 			Map<ByteBuffer,Object> map = ReaderBencode.bencodeToMap(res);
-			
-			int interval = (Integer) map.get( BinaryUtil.stringToByteBuffer("interval") );
-			
 			
 			List<Map<ByteBuffer, Object>> peersList = (List<Map<ByteBuffer, Object>>) map.get(BinaryUtil.stringToByteBuffer("peers"));
 			
@@ -134,7 +139,6 @@ public class ClientTorrent implements ManagerPeer{
 		
 		return false;
 	}
-
 	public boolean downloaded(Peer peer) {
 		// TODO Auto-generated method stub
 		return false;
