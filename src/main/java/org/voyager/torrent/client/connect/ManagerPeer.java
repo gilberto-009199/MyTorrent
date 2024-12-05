@@ -11,4 +11,6 @@ public interface ManagerPeer {
 	public boolean shakeHandsError(Peer peer);
 	public boolean downloaded(Peer peer);
 	public boolean uploaded(Peer peer);
+    public void addInterestPeer(Peer peer);
+    public void removeInterestPeer(Peer peer);
 }

@@ -15,11 +15,11 @@ public class Peer implements Runnable{
 	// Info 
 	private String host;
 	private int port;
-	private byte[] peer_id;
+	private byte[] peerId;
 	private ManagerPeer client;
 	private byte[] infoHash;
 
-	// Codigo de menssagem
+	// code msg
 	public static final byte 	MsgChoke			= 0;
 	public static final byte 	MsgUnchoke			= 1;
 	public static final byte 	MsgInterested		= 2;
@@ -31,23 +31,31 @@ public class Peer implements Runnable{
 	public static final byte 	MsgCancel			= 8;
 	public static final byte[]	Protocol			= BinaryUtil.stringToByteBuffer("BitTorrent protocol").array();
 	
-	// state
+	// in & out
 	private Socket socket = null;
 	private InputStream in;
 	private OutputStream out;
-	// map updated in MsgBitfield for state peer
-	private byte[] piecesInRemote;
+
+	//	state 
+	//	status chocked 
+	//		if  choked then no send data
+	//		if !choked then send data
+	private boolean choked = true;
+
+	//	status Pieces
+	private PiecesMap piecesMap;
 	private boolean verbouse;
+
 	public boolean isConnected = false; // CONNECT SOCKET
 	public boolean hasHandshake = false; // Connect Socket and shake Hands 
-	
-	
-	public Peer(String host, int port, byte[] peer_id, ManagerPeer client) {
+
+	public Peer(String host, int port, byte[] peerId, ManagerPeer client) {
 		this.host = host;
 		this.port = port;
-		this.peer_id = peer_id;
+		this.peerId = peerId;
 		this.client = client;
 		this.infoHash = client.getTorrent().info_hash.array();
+		this.piecesMap = new PiecesMap(client.getTorrent());
 	}
 
 	public void run() {
@@ -70,6 +78,7 @@ public class Peer implements Runnable{
 
 				try {
 					// size messagem
+					// @todo colocar um limite por seguranca
 					int length = dataInput.readInt();
 					// 0 = keep alive (mantenha vivo)
 					if(length == 0)continue;
@@ -85,78 +94,92 @@ public class Peer implements Runnable{
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgChoke");
 								if(verbouse)System.out.println("\t MsgChoke:");
 								if(verbouse)System.out.println("\t  Informa ao peer que ele foi bloqueado. Isso significa que o peer não poderá solicitar peças do arquivo.");
-								if(verbouse)System.out.println(Arrays.toString(buff));
-								// comportamento de receber
-								
+								if(verbouse)System.out.println("\t Peer Paralizado");
+
+								setChoked(true);
+
 								break;
 							case MsgUnchoke:
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgUnchoke");
 								if(verbouse)System.out.println("\t MsgUnchoke:");
 								if(verbouse)System.out.println("\t  Informa ao peer que ele foi desbloqueado. Isso significa que o peer poderá solicitar peças do arquivo.");
-								if(verbouse)System.out.println(Arrays.toString(buff));
-								// comportamento de receber
+								if(verbouse)System.out.println("\t Peer DesParalizado");
 								
+								setChoked(false);
+
 								break;
 							case MsgInterested:
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgInterested");
 								if(verbouse)System.out.println("\t MsgInterested:");
 								if(verbouse)System.out.println("\t  Indica que o peer está interessado em receber peças do arquivo. Geralmente enviado quando o peer detecta que outro possui peças que ele não tem.");
-								if(verbouse)System.out.println(Arrays.toString(buff));
-								// comportamento de receber
+								if(verbouse)System.out.println("\t Peer esta interresado");
+
+								this.client.addInterestPeer(this);
 								
 								break;
 							case MsgNotInterested:
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgNotInterested");
 								if(verbouse)System.out.println("\t MsgNotInterested:");
 								if(verbouse)System.out.println("\t  Indica que o peer não está interessado em receber peças do arquivo. Geralmente enviado quando o peer já possui todas as peças que o outro peer oferece.");
-								if(verbouse)System.out.println(Arrays.toString(buff));
-								// comportamento de receber
+								if(verbouse)System.out.println("\t Peer não esta interresado");
+
+								this.client.removeInterestPeer(this);
 								
 								break;
 							case MsgHave:
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgHave");
 								if(verbouse)System.out.println("\t MsgHave:");
 								if(verbouse)System.out.println("\t  Notifica ao peer que uma nova peça do arquivo foi baixada e está disponível. Essa mensagem ajuda a manter os peers atualizados sobre as peças disponíveis.");
-								if(verbouse)System.out.println(Arrays.toString(buff));
-								// comportamento de receber
-								
+								if(verbouse)System.out.println("\t Tem uma nova peça:" + Arrays.toString(buff));
+
+								// atualizar mapa pices
+
 								break;
 							case MsgBitfield:
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgBitfield");
 								if(verbouse)System.out.println("\t MsgBitfield:");
 								if(verbouse)System.out.println("\t  Envia um mapa de bits que representa todas as peças que o peer possui. É usado logo no início da conexão para informar o estado atual do peer.");
-								if(verbouse)System.out.println(Arrays.toString(buff));
-								// comportamento de receber
-								// -1 iqual a ter 0 igual a não ter uma peça
+								if(verbouse)System.out.println("\t Mapa Pices:"+ new PiecesMap(buff));
+
+								piecesMap.setMap(buff);
 								
 								break;
 							case MsgRequest:
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgRequest");
 								if(verbouse)System.out.println("\t MsgRequest:");
 								if(verbouse)System.out.println("\t  Solicita uma peça específica do arquivo. Contém informações como o índice da peça e o deslocamento dentro dela.");
-								if(verbouse)System.out.println(Arrays.toString(buff));
-								// comportamento de receber
 								
+								if(verbouse)System.out.println("\t Quer a peça:" + Arrays.toString(buff));
+								
+								// Agora você pode responder com a peça solicitada
+								// @todo colocar em um fila de solicitações de peças
+
 								break;
 							case MsgPiece:
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgPiece");
 								if(verbouse)System.out.println("\t MsgPiece:");
 								if(verbouse)System.out.println("\t  Transfere um pedaço de uma peça solicitada para o peer que fez o pedido. Contém os dados reais do arquivo.");
-								if(verbouse)System.out.println(Arrays.toString(buff));
-								// comportamento de receber
+								if(verbouse)System.out.println("\t Pecebi uma peça:" + Arrays.toString(buff));
 								
+								// implementar pegar peça
+								// validar peça por hashes
+								// juntar peça no arquivo alvo
+								
+								// @todo colocar em um fila de peças recebidas
+
 								break;
 							case MsgCancel:
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgCancel");
 								if(verbouse)System.out.println("\t MsgCancel:");
 								if(verbouse)System.out.println("\t  Cancela um pedido anterior de uma peça. Pode ser usado se o pedido não for mais necessário ou se houver um problema na conexão.");
-								if(verbouse)System.out.println(Arrays.toString(buff));
-								// comportamento de receber
-								
+								if(verbouse)System.out.println("\t Cancelando solicitação para a peça: "+ Arrays.toString(buff));
+
+								// @todo Remover da fila de solicitações de peças
+
 								break;
 							default:
 								if(verbouse){
-									System.out.println("DEFAULT result: ");
+									System.out.println("ERROR: DEFAULT result: nO MAPPER: ");
 									System.out.println(Arrays.toString(buff));
 								}
 						}
@@ -241,7 +264,7 @@ public class Peer implements Runnable{
 		return isConnected;
 	}
 	
-	public byte[] genHandshake() {	return Peer.genHandshake(peer_id, infoHash); }
+	public byte[] genHandshake() {	return Peer.genHandshake(peerId, infoHash); }
 
 	/*
 	 * 
@@ -249,7 +272,7 @@ public class Peer implements Runnable{
 	 * <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
 	 * 
 	 */
-	public static byte[] genHandshake(byte[] peer_id, byte[] infohash) {
+	public static byte[] genHandshake(byte[] peerId, byte[] infohash) {
 		int index = 0;
 		byte[] handshake = new byte[68];
 
@@ -270,7 +293,7 @@ public class Peer implements Runnable{
 		index += infohash.length;
 
 		//<Peer ID>
-		System.arraycopy(peer_id, 0, handshake, index, peer_id.length);
+		System.arraycopy(peerId, 0, handshake, index, peerId.length);
 		
 		return handshake;
 	}
@@ -278,19 +301,40 @@ public class Peer implements Runnable{
 	public boolean checkHandshake(byte[] response) { return checkHandshake(this.infoHash, response); }
 	
 	public static boolean checkHandshake(byte[] infoHash, byte[] response) {
-		//<info_hash> for response
-		byte[] peerHash = new byte[20];
-		System.arraycopy(response, 28, peerHash, 0, 20);
+
+		// Exibindo o protocolo (os primeiros 20 bytes da resposta)
+		int offset = 0;
+		byte[] protocol = Arrays.copyOfRange(response, offset, Protocol.length + 1);
+		offset += protocol.length;
+		System.out.println("\t Protocolo: " + new String(protocol));
+	
+		// Exibindo as extensões (8 bytes depois do protocolo)
+		byte[] extensions = Arrays.copyOfRange(response, offset, offset + 8);
+		offset += extensions.length;
+		System.out.println("\t Extensões: " + Arrays.toString(extensions));
+	
+		// Exibindo o info_hash remoto (20 bytes após o campo de extensões)
+		byte[] peerHash = Arrays.copyOfRange(response, offset, offset + 20);
+		offset += peerHash.length;
+		System.out.println("\t Info_hash remoto: " + Arrays.toString(peerHash));
 		// <info_hash local> == <info_hash remoto>
 		if(!Arrays.equals(peerHash, infoHash))
 		{
 			return false;
 		}
-			
+
+		// Exibindo o Peer ID (que vem após o info_hash) 20 bytes
+		byte[] peerId = Arrays.copyOfRange(response, offset, offset + 20);
+		offset += peerId.length;
+		System.out.println("\t Peer ID: " + new String(peerId));
+
 		return true;
 	}
 
-	
+	public boolean hasChoked() { return this.choked;}
+	private void setChoked(boolean choked) {
+		this.choked = choked;
+	}
 	
 	public ManagerPeer getTorrent_info() { return client; }
 
@@ -310,10 +354,10 @@ public class Peer implements Runnable{
 		this.port = port;
 	}
 
-	public byte[] getPeer_id() { return peer_id; }
+	public byte[] getPeerId() { return peerId; }
 
-	public void setPeer_id(byte[] peer_id) {
-		this.peer_id = peer_id;
+	public void setPeerId(byte[] peerId) {
+		this.peerId = peerId;
 	}
 
 	public Socket getSocket() {	return socket; }
@@ -333,12 +377,6 @@ public class Peer implements Runnable{
 	public void setOut(OutputStream out) {
 		this.out = out;
 	}
-	
-	public void setPiecesInRemote(byte[] piecesInRemote){
-		this.piecesInRemote = piecesInRemote;
-	}
-
-	public byte[] getPiecesInRemote(){return this.piecesInRemote;}
 
 	public void setVerbouse(boolean verbouse){
 		this.verbouse = verbouse;
@@ -346,6 +384,6 @@ public class Peer implements Runnable{
 	public boolean getVerbouse(){ return this.verbouse; }
 
 	public String toString() {
-		return ("host: "+this.host+"\t port: "+this.port+"\t connect: "+this.isConnected+"\t hasHandshake: "+ this.hasHandshake );
+		return ("host: "+this.host+"\t port: "+this.port+"\t connect: "+this.isConnected+"\t hasHandshake: "+ this.hasHandshake + "\t Map: "+ this.piecesMap);
 	}
 }
