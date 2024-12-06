@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Map.Entry;
 
 import org.voyager.torrent.client.connect.ManagerPeer;
 import org.voyager.torrent.client.connect.Peer;
@@ -63,20 +65,47 @@ public class ClientTorrent implements ManagerPeer{
 		// Read my file torrent and announce_url
 		processFileTorrent();
 
-		initPeers(10);
-		
-		while(true/* file is not complete */){
+		initPeers(8);
+
+		boolean fileComplete = false;
+		while( !fileComplete ){
+
+			List<Map.Entry<Peer,PiecesMap>> listPeerAndMap = new ArrayList<Map.Entry<Peer,PiecesMap>>();
+			for(Peer peer : listPeers){
+				if(peer.hasChoked())continue;
+
+				PiecesMap diff = peer.getPiecesMap().diff(piecesMap);
+				// verify exist pieces
+				if(diff.totalPieces() > 0){
+					listPeerAndMap.add(new SimpleEntry<Peer, PiecesMap>(peer, diff));
+				}
+			}
+
+			// @todo no futuro criar um logica para dividir as requisições entre os pares
+			for(Map.Entry<Peer,PiecesMap> peerAndMap : listPeerAndMap) {
+				if(verbouse)System.out.println("\t Request Peer & Map:");
+				if(verbouse)System.out.println("\t 	Peer:"+ peerAndMap.getKey());
+				if(verbouse)System.out.println("\t 	Map:"+ peerAndMap.getValue());
+				// send request Pieces for peer
+			}
+
 			//   request pices file in peers not choked
 			//		request pieces with peer contain pices
 			//		priority:
 			//			0 peers interested
 			//			1 peers
 			//			2 peers not interested
+			//		@Link: https://www.bittorrent.org/beps/bep_0003.html
+			//		@Desc: As mensagens 'request' contêm um índice, begin e length. Os dois últimos são deslocamentos de bytes.
+			//			 Length é geralmente uma potência de dois, a menos que seja truncado pelo fim do arquivo.
+			//		@Atenção: requisição maxima e 2^14 (16 kiB), do contrario ele fecha a conexão 
+
 			//   send pices	   in queuePeerRequestPieces
 			//		priority:
 			//			0 peers interested
 			//			1 peers
 			//			2 peers not interested
+
 			//   mounted pices in queuePeerRecievePieces
 			//		hashes verify
 			//		pices mounted
@@ -85,10 +114,11 @@ public class ClientTorrent implements ManagerPeer{
 			//		 		0 peers interested
 			//		 		1 peers
 			//		 		2 peers not interested
+
+			sleep(3000);
 		}
-		
 	}
-		
+	private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
 	private void initPeers(int count) {
 				
 		if(verbouse)System.out.println("Total de Pares: \n"+ listPeers.stream().map((peer) -> peer.toString()+"\n").toList());

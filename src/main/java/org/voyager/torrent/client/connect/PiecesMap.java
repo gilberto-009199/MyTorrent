@@ -30,7 +30,23 @@ public class PiecesMap {
         return total;
     }
     
-    // @todo imnplemnntar change segmento
+    public PiecesMap diff(PiecesMap piecesMap){
+        PiecesMap diff = new PiecesMap(this.map.length);
+        byte[] mapDiff = diff.getMap();
+        // diff this for pieceMpa 
+        // x ? y
+        // 0 ? 1 = 1  ~0b0 & 0b1
+        // 1 ? 0 = 0  ~0b1 & 0b0
+        // 0 ? 0 = 0  ~0b0 & 0b0
+        // 1 ? 1 = 0  ~0b1 & 0b1
+        
+        for(int i = 0; i < map.length; i++) {
+            mapDiff[i] = (byte) ( ~(map[i]) & (piecesMap.map[i]) );
+        }
+
+        return diff;
+    }
+    // @todo imnplementar change segmento
     public void  setMap(byte[] map){  this.map = map; }
     public byte[] getMap(){  return this.map; }
 

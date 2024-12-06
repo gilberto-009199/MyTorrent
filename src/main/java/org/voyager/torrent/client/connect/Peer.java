@@ -148,10 +148,12 @@ public class Peer implements Runnable{
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgRequest");
 								if(verbouse)System.out.println("\t MsgRequest:");
 								if(verbouse)System.out.println("\t  Solicita uma peça específica do arquivo. Contém informações como o índice da peça e o deslocamento dentro dela.");
-								
 								if(verbouse)System.out.println("\t Quer a peça:" + Arrays.toString(buff));
+								//		@Link: https://www.bittorrent.org/beps/bep_0003.html
+								//		@Desc: As mensagens 'request' contêm um índice, begin e length. Os dois últimos são deslocamentos de bytes.
+								//			 Length é geralmente uma potência de dois, a menos que seja truncado pelo fim do arquivo.
+								//		@Atenção: requisição maxima e 2^14 (16 kiB), do contrario ele fecha a conexão 								
 								
-								// Agora você pode responder com a peça solicitada
 								// @todo colocar em um fila de solicitações de peças
 
 								break;
@@ -329,6 +331,11 @@ public class Peer implements Runnable{
 		System.out.println("\t Peer ID: " + new String(peerId));
 
 		return true;
+	}
+
+	public PiecesMap getPiecesMap(){ return this.piecesMap; }
+	public void setPiecesMap(PiecesMap piecesMap){ 
+		this.piecesMap = piecesMap;
 	}
 
 	public boolean hasChoked() { return this.choked;}
