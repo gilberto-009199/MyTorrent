@@ -209,6 +209,7 @@ public class Peer implements Runnable{
 		}
 	}
 
+	//	<len=0013><id=6><index><begin><length>
 	public void sendMsgRequest(long position, long begin, long length){
 		//		@Link:	https://www.bittorrent.org/beps/bep_0003.html
 		//				https://wiki.theory.org/BitTorrentSpecification#request:_.3Clen.3D0013.3E.3Cid.3D6.3E.3Cindex.3E.3Cbegin.3E.3Clength.3E
@@ -250,6 +251,53 @@ public class Peer implements Runnable{
 				13 // length
 			});
 			out.write(msgRequest);
+			out.flush();
+		}catch(Exception e){
+			e.printStackTrace();
+		};
+	}
+	
+	//	<len=0009+X><id=7><index><begin><block>
+	public void sendMsgPiece(long position, long begin, byte[] block){
+		//		@Link:	https://wiki.theory.org/BitTorrentSpecification#piece:_.3Clen.3D0009.2BX.3E.3Cid.3D7.3E.3Cindex.3E.3Cbegin.3E.3Cblock.3E
+		//		@Desc: A mensagem da peça tem comprimento variável, onde X é o comprimento do bloco. A carga contém as seguintes informações:
+		//			+ index: inteiro especificando o índice de peças baseado em zero
+		//			+ begin: inteiro especificando o deslocamento de byte baseado em zero dentro da peça
+		//			+ block: bloco de dados, que é um subconjunto da peça especificada pelo índice.
+		//		@Atenção: requisição maxima e 2^14 (16 kiB), do contrario ele fecha a conexão
+		System.out.println("sendMsgPiece[position: "+ position +", begin: "+ begin +", block_length: "+ block.length +"]");
+
+		byte[] msgPiece = new byte[9];
+		int index = 0;
+ 
+		 // <id=9> (1 byte)
+		 msgPiece[index++] = MsgPiece; // ID para "piece".
+ 
+		 // <index|position in piece> (4 bytes)
+		 msgPiece[index++] = (byte) (position >> 24);
+		 msgPiece[index++] = (byte) (position >> 16);
+		 msgPiece[index++] = (byte) (position >> 8);
+		 msgPiece[index++] = (byte) position;
+ 
+		 // <begin> (4 bytes)
+		 msgPiece[index++] = (byte) (begin >> 24);
+		 msgPiece[index++] = (byte) (begin >> 16);
+		 msgPiece[index++] = (byte) (begin >> 8);
+		 msgPiece[index++] = (byte) begin;
+ 
+
+		try{
+			// <len=009+BLOCK_SIZE> (4 bytes)
+			int length = msgPiece.length + block.length;
+			out.write(new byte[]{
+				(byte)(length >> 24),
+				(byte)(length >> 16),
+				(byte)(length >> 8),
+				(byte)(length)
+			});
+			out.write(msgPiece);
+			// <block>
+			out.write(block);
 			out.flush();
 		}catch(Exception e){
 			e.printStackTrace();
