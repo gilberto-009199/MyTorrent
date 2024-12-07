@@ -11,6 +11,7 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -65,7 +66,7 @@ public class ClientTorrent implements ManagerPeer{
 		// Read my file torrent and announce_url
 		processFileTorrent();
 
-		initPeers(8);
+		initPeers(15);
 
 		boolean fileComplete = false;
 		while( !fileComplete ){
@@ -74,7 +75,7 @@ public class ClientTorrent implements ManagerPeer{
 			for(Peer peer : listPeers){
 				if(peer.hasChoked())continue;
 
-				PiecesMap diff = peer.getPiecesMap().diff(piecesMap);
+				PiecesMap diff = piecesMap.diff( peer.getPiecesMap() );
 				// verify exist pieces
 				if(diff.totalPieces() > 0){
 					listPeerAndMap.add(new SimpleEntry<Peer, PiecesMap>(peer, diff));
@@ -82,11 +83,55 @@ public class ClientTorrent implements ManagerPeer{
 			}
 
 			// @todo no futuro criar um logica para dividir as requisições entre os pares
+			Queue<Map.Entry<Peer,List<int[]>>> queueRequest = new LinkedList<Map.Entry<Peer,List<int[]>>>();
+			int maxPieceForPeer = 1;
 			for(Map.Entry<Peer,PiecesMap> peerAndMap : listPeerAndMap) {
 				if(verbouse)System.out.println("\t Request Peer & Map:");
-				if(verbouse)System.out.println("\t 	Peer:"+ peerAndMap.getKey());
-				if(verbouse)System.out.println("\t 	Map:"+ peerAndMap.getValue());
-				// send request Pieces for peer
+				if(verbouse)System.out.println("\t 	Peer: "+ peerAndMap.getKey());
+				if(verbouse)System.out.println("\t 	Map: "+ peerAndMap.getValue());
+
+				Peer peer = peerAndMap.getKey();
+				PiecesMap map = peerAndMap.getValue();
+				long sizePiece = map.getSizePiece();
+				long totalBlock = map.totalBlockInPiece();	
+				byte[] mapBinary = map.getMap();
+
+				List<int[]> listPiece = new ArrayList<>();
+				for(int index = 0; index < mapBinary.length; index++){
+					// verify != 0 piece
+					if(mapBinary[index] != 0){
+						//  divide in block size 16kb piece
+						//  send request all blocks for piece
+						// for block size in piece:
+						for (int 
+							beginBlock = 0;
+							 	beginBlock < totalBlock 
+								&&
+							 	listPiece.size() < maxPieceForPeer;
+							beginBlock++) {
+
+							long begin = beginBlock * 16384;
+							long length = Math.min(16384, sizePiece - begin); // caso o piece ja tenha finalizado o tamanho de block
+
+							// Adiciona o bloco à lista de requisições.
+							listPiece.add(new int[] { index, (int) begin, (int) length });
+
+						}
+					}
+				}
+				queueRequest.add(new SimpleEntry<>(peer, listPiece));
+			}
+
+			for (Entry<Peer,List<int[]>> peerAndPiece : queueRequest) {
+				System.out.println("Send Request");
+				Peer peer = peerAndPiece.getKey();
+				List<int[]> pieces = peerAndPiece.getValue();
+				for (int[] request : pieces) {
+					int index	= request[0];
+					int begin	= request[1];
+					int length	= request[2];
+					peer.sendMsgRequest( index, begin, length );
+				}
 			}
 
 			//   request pices file in peers not choked

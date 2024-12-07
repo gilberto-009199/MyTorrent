@@ -56,6 +56,7 @@ public class Peer implements Runnable{
 		this.client = client;
 		this.infoHash = client.getTorrent().info_hash.array();
 		this.piecesMap = new PiecesMap(client.getTorrent());
+
 	}
 
 	public void run() {
@@ -77,6 +78,8 @@ public class Peer implements Runnable{
 				DataInputStream dataInput = new DataInputStream(this.in);
 
 				try {
+					
+
 					// size messagem
 					// @todo colocar um limite por seguranca
 					int length = dataInput.readInt();
@@ -139,7 +142,7 @@ public class Peer implements Runnable{
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgBitfield");
 								if(verbouse)System.out.println("\t MsgBitfield:");
 								if(verbouse)System.out.println("\t  Envia um mapa de bits que representa todas as peças que o peer possui. É usado logo no início da conexão para informar o estado atual do peer.");
-								if(verbouse)System.out.println("\t Mapa Pices:"+ new PiecesMap(buff));
+								if(verbouse)System.out.println("\t Mapa Pices:"+ new PiecesMap(buff, piecesMap.getSizePiece()));
 
 								piecesMap.setMap(buff);
 								
@@ -152,7 +155,7 @@ public class Peer implements Runnable{
 								//		@Link: https://www.bittorrent.org/beps/bep_0003.html
 								//		@Desc: As mensagens 'request' contêm um índice, begin e length. Os dois últimos são deslocamentos de bytes.
 								//			 Length é geralmente uma potência de dois, a menos que seja truncado pelo fim do arquivo.
-								//		@Atenção: requisição maxima e 2^14 (16 kiB), do contrario ele fecha a conexão 								
+								//		@Atenção: requisição maxima e 2^14 (16 kiB), do contrario ele fecha a conexão					
 								
 								// @todo colocar em um fila de solicitações de peças
 
@@ -199,13 +202,61 @@ public class Peer implements Runnable{
 					return;
 				}
 
-				
+				sleep(30);
 				
 			}
 			
 		}
 	}
-	
+
+	public void sendMsgRequest(long position, long begin, long length){
+		//		@Link:	https://www.bittorrent.org/beps/bep_0003.html
+		//				https://wiki.theory.org/BitTorrentSpecification#request:_.3Clen.3D0013.3E.3Cid.3D6.3E.3Cindex.3E.3Cbegin.3E.3Clength.3E
+		//		@Desc: As mensagens 'request' contêm um índice, begin e length. Os dois últimos são deslocamentos de bytes.
+		//			 Length é geralmente uma potência de dois, a menos que seja truncado pelo fim do arquivo.
+		//		@Atenção: requisição maxima e 2^14 (16 kiB), do contrario ele fecha a conexão
+		System.out.println("sendMsgRequest[position: "+ position +", begin: "+ begin +", length: "+ length +"]");
+
+		byte[] msgRequest = new byte[13];
+		int index = 0;
+ 
+		 // <id=6> (1 byte)
+		 msgRequest[index++] = MsgRequest; // ID para "request".
+ 
+		 // <index|position in piece> (4 bytes)
+		 msgRequest[index++] = (byte) (position >> 24);
+		 msgRequest[index++] = (byte) (position >> 16);
+		 msgRequest[index++] = (byte) (position >> 8);
+		 msgRequest[index++] = (byte) position;
+ 
+		 // <begin> (4 bytes)
+		 msgRequest[index++] = (byte) (begin >> 24);
+		 msgRequest[index++] = (byte) (begin >> 16);
+		 msgRequest[index++] = (byte) (begin >> 8);
+		 msgRequest[index++] = (byte) begin;
+ 
+		 // <length> (4 bytes)
+		 msgRequest[index++] = (byte) (length >> 24);
+		 msgRequest[index++] = (byte) (length >> 16);
+		 msgRequest[index++] = (byte) (length >> 8);
+		 msgRequest[index] = (byte) length;
+
+		try{
+			// <len=0013> (4 bytes)
+			out.write(new byte[]{
+				0,
+				0,
+				0,
+				13 // length
+			});
+			out.write(msgRequest);
+			out.flush();
+		}catch(Exception e){
+			e.printStackTrace();
+		};
+	}
+
+	// handschake utils func's 
 	private boolean shakeHands() {
 		
 		boolean hasHandshake = false;
@@ -393,4 +444,6 @@ public class Peer implements Runnable{
 	public String toString() {
 		return ("host: "+this.host+"\t port: "+this.port+"\t connect: "+this.isConnected+"\t hasHandshake: "+ this.hasHandshake + "\t Map: "+ this.piecesMap);
 	}
+
+	private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
 }
