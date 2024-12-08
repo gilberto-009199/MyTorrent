@@ -151,26 +151,16 @@ public class Peer implements Runnable{
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgRequest");
 								if(verbouse)System.out.println("\t MsgRequest:");
 								if(verbouse)System.out.println("\t  Solicita uma peça específica do arquivo. Contém informações como o índice da peça e o deslocamento dentro dela.");
-								if(verbouse)System.out.println("\t Quer a peça:" + Arrays.toString(buff));
-								//		@Link: https://www.bittorrent.org/beps/bep_0003.html
-								//		@Desc: As mensagens 'request' contêm um índice, begin e length. Os dois últimos são deslocamentos de bytes.
-								//			 Length é geralmente uma potência de dois, a menos que seja truncado pelo fim do arquivo.
-								//		@Atenção: requisição maxima e 2^14 (16 kiB), do contrario ele fecha a conexão					
 								
-								// @todo colocar em um fila de solicitações de peças
+								processMsgRequest(buff);
 
 								break;
 							case MsgPiece:
 								if(verbouse)System.out.println(this+"\n:\tRecive MsgPiece");
 								if(verbouse)System.out.println("\t MsgPiece:");
 								if(verbouse)System.out.println("\t  Transfere um pedaço de uma peça solicitada para o peer que fez o pedido. Contém os dados reais do arquivo.");
-								if(verbouse)System.out.println("\t Pecebi uma peça:" + Arrays.toString(buff));
-								
-								// implementar pegar peça
-								// validar peça por hashes
-								// juntar peça no arquivo alvo
-								
-								// @todo colocar em um fila de peças recebidas
+
+								processMsgPiece(buff);
 
 								break;
 							case MsgCancel:
@@ -185,7 +175,7 @@ public class Peer implements Runnable{
 							default:
 								if(verbouse){
 									System.out.println("ERROR: DEFAULT result: nO MAPPER: ");
-									System.out.println(Arrays.toString(buff));
+									//System.out.println(Arrays.toString(buff));
 								}
 						}
 						//handshake[index] = 0x13;
@@ -209,6 +199,18 @@ public class Peer implements Runnable{
 		}
 	}
 
+	public void processMsgRequest(byte[] packet){
+		MsgRequest msg  = new MsgRequest(packet);
+		if(verbouse)System.out.println("Request: "+ msg);
+
+	}
+
+	public void processMsgPiece(byte[] packet){
+		MsgPiece msg  = new MsgPiece(packet);
+		if(verbouse)System.out.println("Piece: "+ msg);
+
+	}
+
 	//	<len=0013><id=6><index><begin><length>
 	public void sendMsgRequest(long position, long begin, long length){
 		//		@Link:	https://www.bittorrent.org/beps/bep_0003.html
@@ -216,7 +218,6 @@ public class Peer implements Runnable{
 		//		@Desc: As mensagens 'request' contêm um índice, begin e length. Os dois últimos são deslocamentos de bytes.
 		//			 Length é geralmente uma potência de dois, a menos que seja truncado pelo fim do arquivo.
 		//		@Atenção: requisição maxima e 2^14 (16 kiB), do contrario ele fecha a conexão
-		System.out.println("sendMsgRequest[position: "+ position +", begin: "+ begin +", length: "+ length +"]");
 
 		byte[] msgRequest = new byte[13];
 		int index = 0;
@@ -256,7 +257,16 @@ public class Peer implements Runnable{
 			e.printStackTrace();
 		};
 	}
-	
+
+	public void sendMsgRequest(	MsgRequest request){
+		try{
+			out.write(request.toPacket());
+			out.flush();
+		}catch(Exception e){
+			e.printStackTrace();
+		};
+	}
+
 	//	<len=0009+X><id=7><index><begin><block>
 	public void sendMsgPiece(long position, long begin, byte[] block){
 		//		@Link:	https://wiki.theory.org/BitTorrentSpecification#piece:_.3Clen.3D0009.2BX.3E.3Cid.3D7.3E.3Cindex.3E.3Cbegin.3E.3Cblock.3E
@@ -304,6 +314,14 @@ public class Peer implements Runnable{
 		};
 	}
 
+	public void sendMsgPiece(MsgPiece request){
+		try{
+			out.write(request.toPacket());
+			out.flush();
+		}catch(Exception e){
+			e.printStackTrace();
+		};
+	}
 	// handschake utils func's 
 	private boolean shakeHands() {
 		

@@ -1,12 +1,16 @@
 package org.voyager.torrent.client.connect;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 import GivenTools.TorrentInfo;
 
 public class PiecesMap {
-    
+
     private byte[] map;
+    // mapped packets MsgPiece
+    private Map<Integer, List<MsgPiece>> mapReciveMsgPiece;
     private int sizePiece;
 
     public PiecesMap(TorrentInfo torrent){ 
@@ -24,6 +28,7 @@ public class PiecesMap {
         this.map = new byte[countPieces];
         this.sizePiece = pieceLength;
     }
+
     public PiecesMap(byte[] map, int pieceLength){  
         this.map = map;
         this.sizePiece = pieceLength;
@@ -35,11 +40,11 @@ public class PiecesMap {
         for (byte b : map) {
             // @todo perceba que 1 byte tem 8 bits e isso pode gerar um mapa mais relevante no futuro
             if(b != 0)total++;
-        }    
+        }
         return total;
     }
 
-    public long totalBlockInPiece(){
+    public int totalBlockInPiece(){
         return (int) Math.ceil((double) sizePiece / 16384);
     }
     
@@ -63,11 +68,16 @@ public class PiecesMap {
     public void  setMap(byte[] map){  this.map = map; }
     public byte[] getMap(){  return this.map; }
 
+    public Map<Integer, List<MsgPiece>> getMapReciveMsgPiece() { return mapReciveMsgPiece;  }
+    public void setMapReciveMsgPiece(Map<Integer, List<MsgPiece>> mapReciveMsgPiece) { this.mapReciveMsgPiece = mapReciveMsgPiece; }
+
     public void setSizePiece(int sizePiece){this.sizePiece = sizePiece;}
     public int getSizePiece(){ return this.sizePiece; }
-
+    
     public String toString(){
         double progress = ((double) totalPieces() / map.length) * 100;
         return String.format("Progress: %.2f%% (%d/%d peças)", progress, totalPieces(), map.length);
     }
+
+    
 }
