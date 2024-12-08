@@ -19,6 +19,8 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
 
 import org.voyager.torrent.client.connect.ManagerPeer;
+import org.voyager.torrent.client.connect.MsgPiece;
+import org.voyager.torrent.client.connect.MsgRequest;
 import org.voyager.torrent.client.connect.Peer;
 import org.voyager.torrent.client.connect.PiecesMap;
 import org.voyager.torrent.util.BinaryUtil;
@@ -49,10 +51,10 @@ public class ClientTorrent implements ManagerPeer{
 	public List<Integer> listInterestPeer;
 	
 	// Queue's Pieces Recieve data
-	public Queue<Map.Entry<Peer, byte[]>> queuePeerRecievePieces;
+	public Queue<Entry<Peer, MsgPiece>> queuePeerRecievePieces;
 
 	// Queue's Pieces Request data
-	public Queue<Map.Entry<Peer, byte[]>> queuePeerRequestPieces;
+	public Queue<Entry<Peer, MsgRequest>> queuePeerRequestPieces;
 
 	public int uploaded;
 	public int downloaded;
@@ -83,7 +85,7 @@ public class ClientTorrent implements ManagerPeer{
 			}
 
 			// @todo no futuro criar um logica para dividir as requisições entre os pares
-			Queue<Map.Entry<Peer,List<int[]>>> queueRequest = new LinkedList<Map.Entry<Peer,List<int[]>>>();
+			Queue<Map.Entry<Peer, List<MsgRequest>>> queueRequest = new LinkedList<Map.Entry<Peer, List<MsgRequest>>>();
 			int maxPieceForPeer = 1;
 			for(Map.Entry<Peer,PiecesMap> peerAndMap : listPeerAndMap) {
 				if(verbouse)System.out.println("\t Request Peer & Map:");
@@ -92,11 +94,11 @@ public class ClientTorrent implements ManagerPeer{
 
 				Peer peer = peerAndMap.getKey();
 				PiecesMap map = peerAndMap.getValue();
-				long sizePiece = map.getSizePiece();
-				long totalBlock = map.totalBlockInPiece();	
+				int sizePiece = map.getSizePiece();
+				int totalBlock = map.totalBlockInPiece();
 				byte[] mapBinary = map.getMap();
 
-				List<int[]> listPiece = new ArrayList<>();
+				List<MsgRequest> listPiece = new ArrayList<>();
 				for(int index = 0; index < mapBinary.length; index++){
 					// verify != 0 piece
 					if(mapBinary[index] != 0){
@@ -110,11 +112,11 @@ public class ClientTorrent implements ManagerPeer{
 							 	listPiece.size() < maxPieceForPeer;
 							beginBlock++) {
 
-							long begin = beginBlock * 16384;
-							long length = Math.min(16384, sizePiece - begin); // caso o piece ja tenha finalizado o tamanho de block
+							int begin = beginBlock * 16384;
+							int length = Math.min(16384, sizePiece - begin); // caso o piece ja tenha finalizado o tamanho de block
 
 							// Adiciona o bloco à lista de requisições.
-							listPiece.add(new int[] { index, (int) begin, (int) length });
+							listPiece.add(new MsgRequest(index, begin, length));
 
 						}
 					}
@@ -122,34 +124,13 @@ public class ClientTorrent implements ManagerPeer{
 				queueRequest.add(new SimpleEntry<>(peer, listPiece));
 			}
 
-			for (Entry<Peer,List<int[]>> peerAndPiece : queueRequest) {
-				System.out.println("Send Request");
+			for (Entry<Peer,List<MsgRequest>> peerAndPiece : queueRequest) {
 				Peer peer = peerAndPiece.getKey();
-				List<int[]> pieces = peerAndPiece.getValue();
-				for (int[] request : pieces) {
-					int index	= request[0];
-					int begin	= request[1];
-					int length	= request[2];
-					peer.sendMsgRequest( index, begin, length );
+				List<MsgRequest> pieces = peerAndPiece.getValue();
+				for (MsgRequest request : pieces) {
+					peer.sendMsgRequest( request );
 				}
 			}
-
-			//   request pices file in peers not choked
-			//		request pieces with peer contain pices
-			//		priority:
-			//			0 peers interested
-			//			1 peers
-			//			2 peers not interested
-			//		@Link: https://www.bittorrent.org/beps/bep_0003.html
-			//		@Desc: As mensagens 'request' contêm um índice, begin e length. Os dois últimos são deslocamentos de bytes.
-			//			 Length é geralmente uma potência de dois, a menos que seja truncado pelo fim do arquivo.
-			//		@Atenção: requisição maxima e 2^14 (16 kiB), do contrario ele fecha a conexão 
-
-			//   send pices	   in queuePeerRequestPieces
-			//		priority:
-			//			0 peers interested
-			//			1 peers
-			//			2 peers not interested
 
 			//   mounted pices in queuePeerRecievePieces
 			//		hashes verify
@@ -159,6 +140,17 @@ public class ClientTorrent implements ManagerPeer{
 			//		 		0 peers interested
 			//		 		1 peers
 			//		 		2 peers not interested
+			for (Entry<Peer, MsgPiece> peerAndPiece : queuePeerRecievePieces) {
+				
+			}
+			
+
+
+			//   send pices	   in queuePeerRequestPieces
+			//		priority:
+			//			0 peers interested
+			//			1 peers
+			//			2 peers not interested
 
 			sleep(3000);
 		}
@@ -254,9 +246,6 @@ public class ClientTorrent implements ManagerPeer{
 	public void removeInterestPeer(Peer peer) {
 		this.listInterestPeer.remove(  this.listPeers.indexOf(peer) );
 	}
-
-	
-	
 
 	public boolean addTorentFile(String arquivo){
 		return addTorentFile(new File(arquivo));
