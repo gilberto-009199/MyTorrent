@@ -7,6 +7,8 @@ import GivenTools.TorrentInfo;
 public interface ManagerPeer {
 	
 	public TorrentInfo getTorrent();
+	public void addQueue(Peer peer, MsgRequest msg);
+	public void addQueue(Peer peer, MsgPiece msg);
 	public boolean connectError(Peer peer);
 	public boolean shakeHandsError(Peer peer);
 	public boolean downloaded(Peer peer);

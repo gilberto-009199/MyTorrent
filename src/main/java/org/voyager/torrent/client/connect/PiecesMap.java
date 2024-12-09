@@ -1,8 +1,12 @@
 package org.voyager.torrent.client.connect;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import GivenTools.TorrentInfo;
 
@@ -43,6 +47,10 @@ public class PiecesMap {
         }
         return total;
     }
+    
+    public boolean complete(){
+        return totalPieces() == map.length;
+    }
 
     public int totalBlockInPiece(){
         return (int) Math.ceil((double) sizePiece / 16384);
@@ -79,5 +87,49 @@ public class PiecesMap {
         return String.format("Progress: %.2f%% (%d/%d peças)", progress, totalPieces(), map.length);
     }
 
-    
+    public void addPieceBlock(MsgPiece msg) {
+        if(mapReciveMsgPiece == null)this.mapReciveMsgPiece = new HashMap<>();
+
+        if(mapReciveMsgPiece.get(msg.getPosition()) == null)mapReciveMsgPiece.put(msg.getPosition(), new ArrayList<>(totalBlockInPiece()));
+
+        List<MsgPiece> listPieces = mapReciveMsgPiece.get(msg.getPosition());
+
+        listPieces.add(msg);
+    }
+
+    public void reCalcMap(){
+        
+        if(mapReciveMsgPiece == null)this.mapReciveMsgPiece = new HashMap<>();
+
+        // alter map bytes
+        // talves cheksum in pieces
+        int totalBlockInPiece = totalBlockInPiece();
+        byte[] newMap = map.clone();
+        // clear
+        for (int index = 0; index < newMap.length; index++) { newMap[index] = 0;  }
+
+        for (Entry<Integer, List<MsgPiece>> postionAndListMsgPiece: mapReciveMsgPiece.entrySet()) {
+            boolean complete = isPieceComplete(
+                postionAndListMsgPiece.getValue(),
+                totalBlockInPiece
+            );
+            newMap[postionAndListMsgPiece.getKey()] = (byte) (complete ? 1 : 0 );
+        }
+        map = newMap;
+    }
+
+    boolean isPieceComplete(List<MsgPiece> listMsgPiece, int totalBlockInPiece) {
+
+        listMsgPiece.sort(Comparator.comparingInt(MsgPiece::getBegin));
+
+        int expectedBegin = 0;
+        for (MsgPiece msgPiece : listMsgPiece) {
+            if (msgPiece.getBegin() != expectedBegin) {
+                return false; // Falha na continuidade
+            }
+            expectedBegin += msgPiece.getBlock().length;
+        }
+
+        return listMsgPiece.size() == totalBlockInPiece;
+    }
 }

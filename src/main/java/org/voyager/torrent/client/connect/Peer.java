@@ -174,8 +174,9 @@ public class Peer implements Runnable{
 								break;
 							default:
 								if(verbouse){
-									System.out.println("ERROR: DEFAULT result: nO MAPPER: ");
-									//System.out.println(Arrays.toString(buff));
+									System.out.printf("ERROR: MSG no mapper %d :\n\n", (int) state);
+									System.out.write(buff, 0, (buff.length > 100 ? 100: buff.length));
+									System.out.println("\n\n FINAL MSG no mapper");
 								}
 						}
 						//handshake[index] = 0x13;
@@ -202,12 +203,15 @@ public class Peer implements Runnable{
 	public void processMsgRequest(byte[] packet){
 		MsgRequest msg  = new MsgRequest(packet);
 		if(verbouse)System.out.println("Request: "+ msg);
-
+		
+		client.addQueue(this, msg);
 	}
 
 	public void processMsgPiece(byte[] packet){
 		MsgPiece msg  = new MsgPiece(packet);
 		if(verbouse)System.out.println("Piece: "+ msg);
+
+		client.addQueue(this, msg);
 
 	}
 
