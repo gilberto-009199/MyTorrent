@@ -1,68 +1,95 @@
 package org.voyager.torrent.client;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.BindException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import org.voyager.torrent.client.connect.BasicManagerAnnounce;
+import org.voyager.torrent.client.connect.BasicManagerPeer;
+import org.voyager.torrent.client.connect.ManagerAnnounce;
 import org.voyager.torrent.client.connect.ManagerPeer;
-import org.voyager.torrent.client.connect.MsgPiece;
-import org.voyager.torrent.client.connect.MsgRequest;
 import org.voyager.torrent.client.connect.Peer;
-import org.voyager.torrent.client.connect.PiecesMap;
-import org.voyager.torrent.util.BinaryUtil;
-import org.voyager.torrent.util.HttpUtil;
-import org.voyager.torrent.util.ReaderBencode;
+import org.voyager.torrent.client.files.Torrent;
+import org.voyager.torrent.client.util.AnnounceRequestUtil;
 
-import GivenTools.BencodingException;
-import GivenTools.TorrentInfo;
-
-public class ClientTorrent implements ManagerPeer{ 
-
-	public static String separator = System.getProperty("file.separator");
-	public static String dirUser = new File(System.getProperty("user.home")).getAbsolutePath()+separator;
-	public static String dirRuntime = "."+separator;
-
-	// torrent info e connets info
-	public TorrentInfo torrent;
+public class ClientTorrent{ 
 
 	private boolean verbouse;
+	private Torrent torrent;
 
-	// state
-	// Map Pieces Downloaded from file
-	private PiecesMap piecesMap;
+	private int maxUploaderPeerSecond = -1;
+	private int maxDownloaderPeerSecond = -1;
+
+	private int timeReAnnounceInSec = 60;
+	private int timeVerifyNewsPeersInSec = 60;
+
+	private ExecutorService executor;
 	
-	// List Peers Connected
-	public List<Peer> listPeers;
-	public List<Integer> listInterestPeer;
+	private ManagerAnnounce managerAnnounce;
+	private ManagerPeer managerPeer;
+
+	public ClientTorrent(String torrentFile){ 
+		torrent = Torrent.of(torrentFile);
+	}
+	public ClientTorrent(String torrentFile, boolean verbouse){ 
+		this.verbouse = verbouse; 
+		torrent = Torrent.of(torrentFile);
+	}
 	
-	// Queue's Pieces Recieve data
-	public Queue<Entry<Peer, MsgPiece>> queuePeerRecievePieces = new ConcurrentLinkedQueue<>();
+	// @todo add mode simple, server, consumer, seeding
+	public void start() { start(1); }
+	public void start(int totalThreads) {
+		// stop executor 
+		if( executor != null && !executor.isShutdown() )stop();
 
-	// Queue's Pieces Request data
-	public Queue<Entry<Peer, MsgRequest>> queuePeerRequestPieces = new ConcurrentLinkedQueue<>();
+		executor			= Executors.newFixedThreadPool(totalThreads);
 
-	public int uploaded;
-	public int downloaded;
+		managerAnnounce		= new BasicManagerAnnounce(this);
+		managerPeer 		= new BasicManagerPeer(this);
 
-	public ClientTorrent(boolean verbouse){ this.verbouse = verbouse; }
+		managerAnnounce.withManagerPeer(managerPeer)
+					   .withTimeAnnounce(timeReAnnounceInSec)
+					   .withTimeVerifyNewsPeersInSecond(timeVerifyNewsPeersInSec);
 
-	public void start() throws BencodingException {
+		managerPeer.withManagerAnnounce(managerAnnounce)
+			  	   .withMaxUploaderPeerSecond(maxUploaderPeerSecond)
+				   .withMaxDownloaderPeerSecond(maxDownloaderPeerSecond);
+
+		resume();
+	}
+
+	public void resume(){
+		if (executor != null && !executor.isShutdown()) {
+            executor.submit(managerAnnounce);
+            executor.submit(managerPeer);
+        }
+	}
+
+	public void stop(){
+		if (executor != null && !executor.isShutdown()) {
+            executor.shutdown(); // Solicita o encerramento suave das tarefas
+            try {
+                // Aguarda o término das tarefas por até 3 segundos
+                if (!executor.awaitTermination(3, TimeUnit.SECONDS)) {
+                    executor.shutdownNow(); // Força o encerramento
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+            }
+        }
+	}
+
+    public Torrent getTorrent() { return this.torrent;  }
+    public ManagerPeer getManagerPeer() { return this.managerPeer;  }
+	public ManagerAnnounce getManagerAnnounce() { return this.managerAnnounce; }
+
+	/*public void start() {
+
 		
+		
+		/*
 		listPeers = new ArrayList<Peer>(); 
 		
 		// Read my file torrent and announce_url
@@ -158,8 +185,8 @@ public class ClientTorrent implements ManagerPeer{
 			System.out.println("MyMap:"+ piecesMap);
 		}
 	}
-	private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
-	private void initPeers(int count) {
+	private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }*/
+	/*private void initPeers(int count) {
 				
 		if(verbouse)System.out.println("Total de Pares: \n"+ listPeers.stream().map((peer) -> peer.toString()+"\n").toList());
 		
@@ -173,8 +200,8 @@ public class ClientTorrent implements ManagerPeer{
 				System.out.println(e.getMessage());
 			}
 		}
-	}
-
+	}*/
+/*
 	private void processFileTorrent(){
 		try {
 			
@@ -195,7 +222,7 @@ public class ClientTorrent implements ManagerPeer{
 			parameters.put("left", torrent.file_length+"");
 			System.out.println(" Announce URL:  "+ torrent.announce_url);
 			
-			torrent.info_hash.array()
+			torrent.info_hash.array();
 			this.piecesMap = new PiecesMap(torrent);
 
 			URL url_announce = new URL(torrent.announce_url+"?"+HttpUtil.getParamsString(parameters));
@@ -238,58 +265,6 @@ public class ClientTorrent implements ManagerPeer{
 			e.printStackTrace();
 		}
 	}
-
-	// Manager  Peers Interest and Not Interest
-	public List<Integer> getListInterestPeers(){ return this.listInterestPeer;}
-	public List<Peer> getListInterestPeersWithPeers(){ 
-		return this.listInterestPeer.stream().map(listPeers::get).toList();
-	}
-	public void addInterestPeer(Peer peer) {	
-		this.listInterestPeer.add(  this.listPeers.indexOf(peer) );
-	}
-	public void removeInterestPeer(Peer peer) {
-		this.listInterestPeer.remove(  this.listPeers.indexOf(peer) );
-	}
-	
-	public void addQueue(Peer peer ,MsgPiece msg) {	
-		this.queuePeerRecievePieces.add(new SimpleEntry<Peer, MsgPiece>(peer, msg));
-	}
-	
-	public void addQueue(Peer peer, MsgRequest msg) {	
-		this.queuePeerRequestPieces.add(new SimpleEntry<Peer, MsgRequest>(peer, msg));
-	}
-	
-
-	public boolean addTorentFile(String arquivo){
-		return addTorentFile(new File(arquivo));
-	}
-	public boolean addTorentFile(File arquivo){
-		this.torrent = ReaderBencode.parseTorrentFile(arquivo);
-		if(this.torrent == null)return false;
-		else return true;
-	}
-	public TorrentInfo getTorrent() {
-		return this.torrent;
-	}
-
-	public boolean connectError(Peer peer) {
-		System.out.println("Erro na conexao: "+peer);
-		
-		return false;
-	}
-	public boolean downloaded(Peer peer) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	public boolean uploaded(Peer peer) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	public boolean shakeHandsError(Peer peer) {
-		System.out.println("Erro no hasdshake: "+peer);
-		return false;
-	}
+*/
 
 }
