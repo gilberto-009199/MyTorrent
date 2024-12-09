@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.voyager.torrent.client.connect.ManagerPeer;
 import org.voyager.torrent.client.connect.MsgPiece;
@@ -25,7 +26,6 @@ import org.voyager.torrent.client.connect.Peer;
 import org.voyager.torrent.client.connect.PiecesMap;
 import org.voyager.torrent.util.BinaryUtil;
 import org.voyager.torrent.util.HttpUtil;
-import org.voyager.torrent.util.PrintUtil;
 import org.voyager.torrent.util.ReaderBencode;
 
 import GivenTools.BencodingException;
@@ -51,10 +51,10 @@ public class ClientTorrent implements ManagerPeer{
 	public List<Integer> listInterestPeer;
 	
 	// Queue's Pieces Recieve data
-	public Queue<Entry<Peer, MsgPiece>> queuePeerRecievePieces;
+	public Queue<Entry<Peer, MsgPiece>> queuePeerRecievePieces = new ConcurrentLinkedQueue<>();
 
 	// Queue's Pieces Request data
-	public Queue<Entry<Peer, MsgRequest>> queuePeerRequestPieces;
+	public Queue<Entry<Peer, MsgRequest>> queuePeerRequestPieces = new ConcurrentLinkedQueue<>();
 
 	public int uploaded;
 	public int downloaded;
@@ -70,8 +70,7 @@ public class ClientTorrent implements ManagerPeer{
 
 		initPeers(15);
 
-		boolean fileComplete = false;
-		while( !fileComplete ){
+		while( !piecesMap.complete() ){
 
 			List<Map.Entry<Peer,PiecesMap>> listPeerAndMap = new ArrayList<Map.Entry<Peer,PiecesMap>>();
 			for(Peer peer : listPeers){
@@ -86,7 +85,7 @@ public class ClientTorrent implements ManagerPeer{
 
 			// @todo no futuro criar um logica para dividir as requisições entre os pares
 			Queue<Map.Entry<Peer, List<MsgRequest>>> queueRequest = new LinkedList<Map.Entry<Peer, List<MsgRequest>>>();
-			int maxPieceForPeer = 1;
+			int maxPieceForPeer = 3;
 			for(Map.Entry<Peer,PiecesMap> peerAndMap : listPeerAndMap) {
 				if(verbouse)System.out.println("\t Request Peer & Map:");
 				if(verbouse)System.out.println("\t 	Peer: "+ peerAndMap.getKey());
@@ -140,8 +139,10 @@ public class ClientTorrent implements ManagerPeer{
 			//		 		0 peers interested
 			//		 		1 peers
 			//		 		2 peers not interested
+			System.out.println("Queue Piece: "+ queuePeerRecievePieces);
 			for (Entry<Peer, MsgPiece> peerAndPiece : queuePeerRecievePieces) {
-				
+				piecesMap.addPieceBlock(peerAndPiece.getValue());
+				queuePeerRecievePieces.remove(peerAndPiece);
 			}
 			
 
@@ -153,6 +154,8 @@ public class ClientTorrent implements ManagerPeer{
 			//			2 peers not interested
 
 			sleep(3000);
+			piecesMap.reCalcMap();
+			System.out.println("MyMap:"+ piecesMap);
 		}
 	}
 	private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
@@ -171,7 +174,7 @@ public class ClientTorrent implements ManagerPeer{
 			}
 		}
 	}
-		
+
 	private void processFileTorrent(){
 		try {
 			
@@ -192,6 +195,7 @@ public class ClientTorrent implements ManagerPeer{
 			parameters.put("left", torrent.file_length+"");
 			System.out.println(" Announce URL:  "+ torrent.announce_url);
 			
+			torrent.info_hash.array()
 			this.piecesMap = new PiecesMap(torrent);
 
 			URL url_announce = new URL(torrent.announce_url+"?"+HttpUtil.getParamsString(parameters));
@@ -246,6 +250,15 @@ public class ClientTorrent implements ManagerPeer{
 	public void removeInterestPeer(Peer peer) {
 		this.listInterestPeer.remove(  this.listPeers.indexOf(peer) );
 	}
+	
+	public void addQueue(Peer peer ,MsgPiece msg) {	
+		this.queuePeerRecievePieces.add(new SimpleEntry<Peer, MsgPiece>(peer, msg));
+	}
+	
+	public void addQueue(Peer peer, MsgRequest msg) {	
+		this.queuePeerRequestPieces.add(new SimpleEntry<Peer, MsgRequest>(peer, msg));
+	}
+	
 
 	public boolean addTorentFile(String arquivo){
 		return addTorentFile(new File(arquivo));
