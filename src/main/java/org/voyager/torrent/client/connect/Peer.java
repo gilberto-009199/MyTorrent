@@ -48,7 +48,8 @@ public class Peer implements Runnable{
 
 	public boolean isConnected = false; // CONNECT SOCKET
 	public boolean hasHandshake = false; // Connect Socket and shake Hands 
-
+	
+	public Peer() {}
 	public Peer(String host, int port, byte[] peerId, ManagerPeer client) {
 		this.host = host;
 		this.port = port;
@@ -56,7 +57,6 @@ public class Peer implements Runnable{
 		this.client = client;
 		this.infoHash = client.getTorrent().info_hash.array();
 		this.piecesMap = new PiecesMap(client.getTorrent());
-
 	}
 
 	public void run() {
@@ -455,8 +455,10 @@ public class Peer implements Runnable{
 	}
 
 	public PiecesMap getPiecesMap(){ return this.piecesMap; }
-	public void setPiecesMap(PiecesMap piecesMap){ 
+	public void setPiecesMap(PiecesMap piecesMap){ this.piecesMap = piecesMap; }
+	public Peer withPiecesMap(PiecesMap piecesMap){
 		this.piecesMap = piecesMap;
+		return this;
 	}
 
 	public boolean hasChoked() { return this.choked;}
@@ -464,38 +466,40 @@ public class Peer implements Runnable{
 		this.choked = choked;
 	}
 	
-	public ManagerPeer getTorrent_info() { return client; }
-
-	public void setTorrent_info(ManagerPeer client) {
+	public ManagerPeer getManagerPeer() { return client; }
+	public void setManagerPeer(ManagerPeer client) { this.client = client;	}
+	public Peer withManagerPeer(ManagerPeer client){
 		this.client = client;
+		return this;
 	}
 
 	public String getHost() { return host; }
-
-	public void setHost(String host) {
+	public void setHost(String host) { this.host = host;}
+	public Peer withHost(String host){
 		this.host = host;
+		return this;
 	}
 
 	public int getPort() { return port; }
-
-	public void setPort(int port) {
+	public void setPort(int port) { this.port = port; }
+	public Peer withPort(int port){
 		this.port = port;
+		return this;
 	}
 
 	public byte[] getPeerId() { return peerId; }
-
-	public void setPeerId(byte[] peerId) {
+	public void setPeerId(byte[] peerId) { this.peerId = peerId; }
+	public Peer withPeerId(byte[] peerId){
 		this.peerId = peerId;
+		return this;
 	}
 
 	public Socket getSocket() {	return socket; }
-
 	public void setSocket(Socket socket) {
 		this.socket = socket;
 	}
 
 	public InputStream getIn() { return in;	}
-
 	public void setIn(InputStream in) {
 		this.in = in;
 	}
