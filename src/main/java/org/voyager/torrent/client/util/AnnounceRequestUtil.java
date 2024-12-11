@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.voyager.torrent.client.connect.Peer;
+import org.voyager.torrent.client.connect.PeerNonBlock;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.util.BinaryUtil;
 import org.voyager.torrent.util.HttpUtil;
@@ -18,17 +19,17 @@ import org.voyager.torrent.util.ReaderBencode;
 
 public class AnnounceRequestUtil {
 
-    public static Optional<List<Peer>> requestAnnounce(Torrent torrent){
+    public static Optional<List<PeerNonBlock>> requestAnnounce(Torrent torrent){
         return requestAnnounce(torrent.getAnnounceURL(), torrent.genAnnounceParameters(), 0, 3);
     }
 
-    public static Optional<List<Peer>> requestAnnounce(String announce, Map<String, String> parameters){
+    public static Optional<List<PeerNonBlock>> requestAnnounce(String announce, Map<String, String> parameters){
         return requestAnnounce(announce, parameters, 0, 3);
     }
 
-    public static Optional<List<Peer>> requestAnnounce(String announce, Map<String, String> parameters, int retry, int limit){
+    public static Optional<List<PeerNonBlock>> requestAnnounce(String announce, Map<String, String> parameters, int retry, int limit){
 
-        List<Peer> listPeer = new ArrayList<Peer>();
+        List<PeerNonBlock> listPeer = new ArrayList<PeerNonBlock>();
 
         try{
             URL url_announce = new URL(announce+"?"+HttpUtil.getParamsString(parameters));
@@ -59,7 +60,7 @@ public class AnnounceRequestUtil {
                     continue;
                 }
                 
-                listPeer.add( new Peer().withHost(ip).withPort(peerPort) ); 
+                listPeer.add( new PeerNonBlock().withHost(ip).withPort(peerPort) ); 
             }
         }catch(Exception e){
             System.out.println("Error In Announce:");

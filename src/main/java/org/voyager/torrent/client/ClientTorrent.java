@@ -4,11 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.voyager.torrent.client.connect.BasicManagerAnnounce;
+import org.voyager.torrent.client.connect.BasicManagerFile;
 import org.voyager.torrent.client.connect.BasicManagerPeer;
 import org.voyager.torrent.client.connect.ManagerAnnounce;
+import org.voyager.torrent.client.connect.ManagerFile;
 import org.voyager.torrent.client.connect.ManagerPeer;
 import org.voyager.torrent.client.connect.Peer;
 import org.voyager.torrent.client.files.Torrent;
@@ -25,14 +28,20 @@ public class ClientTorrent{
 	private int timeReAnnounceInSec = 60;
 	private int timeVerifyNewsPeersInSec = 60;
 
-	private ExecutorService executor;
+	// odeio essa solução mas o quasar e o loom são muito intruzivos
+	// fora que o executors e o scheduler são insufientes
+	private Semaphore semaphoreExecutor;
 	
-	private ManagerAnnounce managerAnnounce;
-	private ManagerPeer managerPeer;
+	private ManagerFile managerFile;
+	private Thread thrManagerFile;
 
-	public ClientTorrent(String torrentFile){ 
-		torrent = Torrent.of(torrentFile);
-	}
+	private ManagerAnnounce managerAnnounce;
+	private Thread thrManagerAnnounce;
+
+	private ManagerPeer managerPeer;
+	private Thread thrManagerPeer;
+
+	public ClientTorrent(String torrentFile){ torrent = Torrent.of(torrentFile);}
 	public ClientTorrent(String torrentFile, boolean verbouse){ 
 		this.verbouse = verbouse; 
 		torrent = Torrent.of(torrentFile);
@@ -41,49 +50,97 @@ public class ClientTorrent{
 	// @todo add mode simple, server, consumer, seeding
 	public void start() { start(1); }
 	public void start(int totalThreads) {
-		// stop executor 
-		if( executor != null && !executor.isShutdown() )stop();
+        // Stop any existing setup
+        if (semaphoreExecutor != null) stop();
 
-		executor			= Executors.newFixedThreadPool(totalThreads);
+        semaphoreExecutor = new Semaphore(totalThreads, totalThreads > 1);
 
-		managerAnnounce		= new BasicManagerAnnounce(this);
-		managerPeer 		= new BasicManagerPeer(this);
+        // Initialize managers with shared semaphore
+        managerAnnounce = new BasicManagerAnnounce(this);
+        managerPeer		= new BasicManagerPeer(this);
+        managerFile		= new BasicManagerFile(this);
 
-		managerAnnounce.withManagerPeer(managerPeer)
-					   .withTimeAnnounce(timeReAnnounceInSec)
-					   .withTimeVerifyNewsPeersInSecond(timeVerifyNewsPeersInSec);
+        // Configure dependencies between managers
+        managerAnnounce.withSemaphoreExecutor(semaphoreExecutor)
+					   .withManagerPeer(managerPeer)
+                       .withManagerFile(managerFile)
+                       .withTimeReAnnounceInSecond(timeReAnnounceInSec)
+                       .withTimeVerifyNewsPeersInSecond(timeVerifyNewsPeersInSec);
 
-		managerPeer.withManagerAnnounce(managerAnnounce)
-			  	   .withMaxUploaderPeerSecond(maxUploaderPeerSecond)
-				   .withMaxDownloaderPeerSecond(maxDownloaderPeerSecond);
+        managerPeer.withSemaphoreExecutor(semaphoreExecutor)
+				   .withManagerAnnounce(managerAnnounce)
+                   .withManagerFile(managerFile)
+                   .withMaxUploaderPeerSecond(maxUploaderPeerSecond)
+                   .withMaxDownloaderPeerSecond(maxDownloaderPeerSecond);
 
-		resume();
-	}
+        managerFile.withSemaphoreExecutor(semaphoreExecutor)
+				   .withManagerPeer(managerPeer)
+                   .withManagerAnnounce(managerAnnounce);
 
-	public void resume(){
-		if (executor != null && !executor.isShutdown()) {
-            executor.submit(managerAnnounce);
-            executor.submit(managerPeer);
+        // Start the threads
+        resume();
+    }
+
+    // Resume or start the threads
+    public void resume() {
+        // Ensure threads are not already running
+        if (thrManagerAnnounce == null || !thrManagerAnnounce.isAlive()) {
+            thrManagerAnnounce = new Thread(managerAnnounce, "ManagerAnnounceThread");
+            thrManagerAnnounce.start();
         }
-	}
 
-	public void stop(){
-		if (executor != null && !executor.isShutdown()) {
-            executor.shutdown(); // Solicita o encerramento suave das tarefas
+        if (thrManagerPeer == null || !thrManagerPeer.isAlive()) {
+            thrManagerPeer = new Thread(managerPeer, "ManagerPeerThread");
+            thrManagerPeer.start();
+        }
+
+        if (thrManagerFile == null || !thrManagerFile.isAlive()) {
+            thrManagerFile = new Thread(managerFile, "ManagerFileThread");
+            thrManagerFile.start();
+			
+        }
+    }
+
+    // Stop all threads and reset the semaphore
+    public void stop() {
+        if (semaphoreExecutor == null) return;
+
+        // Interrupt and join threads safely
+        if (thrManagerAnnounce != null && thrManagerAnnounce.isAlive()) {
+            thrManagerAnnounce.interrupt();
             try {
-                // Aguarda o término das tarefas por até 3 segundos
-                if (!executor.awaitTermination(3, TimeUnit.SECONDS)) {
-                    executor.shutdownNow(); // Força o encerramento
-                }
+                thrManagerAnnounce.join();
             } catch (InterruptedException e) {
-                executor.shutdownNow();
+                Thread.currentThread().interrupt();
             }
         }
-	}
+
+        if (thrManagerPeer != null && thrManagerPeer.isAlive()) {
+            thrManagerPeer.interrupt();
+            try {
+                thrManagerPeer.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        if (thrManagerFile != null && thrManagerFile.isAlive()) {
+            thrManagerFile.interrupt();
+            try {
+                thrManagerFile.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        semaphoreExecutor = null;
+    }
 
     public Torrent getTorrent() { return this.torrent;  }
     public ManagerPeer getManagerPeer() { return this.managerPeer;  }
 	public ManagerAnnounce getManagerAnnounce() { return this.managerAnnounce; }
+	public ManagerFile getManagerFile() { return this.managerFile; }
+
 
 	/*public void start() {
 

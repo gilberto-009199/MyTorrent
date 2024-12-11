@@ -8,14 +8,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.voyager.torrent.client.files.Torrent;
+
 import GivenTools.TorrentInfo;
 
 public class PiecesMap {
 
     private byte[] map;
-    // mapped packets MsgPiece
-    private Map<Integer, List<MsgPiece>> mapReciveMsgPiece;
     private int sizePiece;
+    public final int sizeBlock = 16 * 1024;
+
+    public PiecesMap(Torrent torrent){ 
+        this.map            = new byte[(torrent.getListPieceHashes().size() / 8) + 1];
+        this.sizePiece      = torrent.getPieceLength();
+    }
 
     public PiecesMap(TorrentInfo torrent){ 
         // calc (total hashes / 8), for pieces => 
@@ -53,7 +59,7 @@ public class PiecesMap {
     }
 
     public int totalBlockInPiece(){
-        return (int) Math.ceil((double) sizePiece / 16384);
+        return (int) Math.ceil((double) sizePiece / sizeBlock);
     }
     
     public PiecesMap diff(PiecesMap piecesMap){
@@ -76,9 +82,6 @@ public class PiecesMap {
     public void  setMap(byte[] map){  this.map = map; }
     public byte[] getMap(){  return this.map; }
 
-    public Map<Integer, List<MsgPiece>> getMapReciveMsgPiece() { return mapReciveMsgPiece;  }
-    public void setMapReciveMsgPiece(Map<Integer, List<MsgPiece>> mapReciveMsgPiece) { this.mapReciveMsgPiece = mapReciveMsgPiece; }
-
     public void setSizePiece(int sizePiece){this.sizePiece = sizePiece;}
     public int getSizePiece(){ return this.sizePiece; }
     
@@ -86,7 +89,7 @@ public class PiecesMap {
         double progress = ((double) totalPieces() / map.length) * 100;
         return String.format("Progress: %.2f%% (%d/%d peças)", progress, totalPieces(), map.length);
     }
-
+/* 
     public void addPieceBlock(MsgPiece msg) {
         if(mapReciveMsgPiece == null)this.mapReciveMsgPiece = new HashMap<>();
 
@@ -99,8 +102,6 @@ public class PiecesMap {
 
     public void reCalcMap(){
         
-        if(mapReciveMsgPiece == null)this.mapReciveMsgPiece = new HashMap<>();
-
         // alter map bytes
         // talves cheksum in pieces
         int totalBlockInPiece = totalBlockInPiece();
@@ -118,7 +119,7 @@ public class PiecesMap {
         map = newMap;
     }
 
-    boolean isPieceComplete(List<MsgPiece> listMsgPiece, int totalBlockInPiece) {
+    private boolean isPieceComplete(List<MsgPiece> listMsgPiece, int totalBlockInPiece) {
 
         listMsgPiece.sort(Comparator.comparingInt(MsgPiece::getBegin));
 
@@ -132,4 +133,5 @@ public class PiecesMap {
 
         return listMsgPiece.size() == totalBlockInPiece;
     }
+*/
 }

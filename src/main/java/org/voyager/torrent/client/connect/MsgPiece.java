@@ -1,20 +1,20 @@
 package org.voyager.torrent.client.connect;
 
-import java.nio.ByteBuffer;
-
 public class MsgPiece {
 
     public static final int ID = 7;
-    
+
+    private int end;
     private int begin;
     private int position;
+
     private byte[] block;
 
-    
     //	<len=0009+X><id=7><index><begin><block>
     public MsgPiece(int position, int begin, byte[] block){
         this.position = position;
         this.begin = begin;
+        this.end = begin + block.length;
         this.block = block;
     }
 
@@ -38,6 +38,7 @@ public class MsgPiece {
         );
         
         this.block = new byte[packet.length - index];
+        this.end = begin + block.length;
         System.arraycopy(packet, index, block, 0, block.length);
         
     }
@@ -72,7 +73,7 @@ public class MsgPiece {
         // <block>
         System.arraycopy(block, 0, packet, metadata.length, block.length);
         
-        return packet;  // Retorna o pacote completo
+        return packet;
     }
 
     public MsgPiece withPosition(int position){
@@ -85,18 +86,22 @@ public class MsgPiece {
     }
     public MsgPiece withBlock(byte[] block){
         this.block = block;
+        this.end = begin + block.length;
         return this;
     }
+
     public static int getId() { return ID;  }
     public int getPosition() { return position; }
     public void setPosition(int position) {  this.position = position; }
     public int getBegin() {   return begin; }
     public void setBegin(int begin) {  this.begin = begin; }
+    public int getEnd() {   return this.end; }
+    public void setEnd(int end) {  this.end = end; }
     public byte[] getBlock() {  return block; }
     public void setBlock(byte[] block) { this.block = block; }
 
     public String toString(){
         //	<len=0009+X><id=7><index><begin><block>
-        return "MsgPiece[position: "+ position +", begin: "+ begin+", block: [length: "+ block.length +"]]";
+        return "MsgPiece[position: "+ position +", begin: "+ begin+", end: "+ end +", block: [length: "+ (begin - end) +"]]";
     }
 }
