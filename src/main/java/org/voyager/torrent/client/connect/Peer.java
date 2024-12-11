@@ -10,7 +10,7 @@ import java.util.Arrays;
 
 import org.voyager.torrent.util.BinaryUtil;
 
-public class Peer implements Runnable{
+public class Peer {}/*implements Runnable{
 
 	// Info 
 	private String host;
@@ -55,7 +55,7 @@ public class Peer implements Runnable{
 		this.port = port;
 		this.peerId = peerId;
 		this.client = client;
-		this.infoHash = client.getTorrent().info_hash.array();
+		this.infoHash = client.getTorrent().getInfoHash();
 		this.piecesMap = new PiecesMap(client.getTorrent());
 	}
 
@@ -389,12 +389,8 @@ public class Peer implements Runnable{
 	
 	public byte[] genHandshake() {	return Peer.genHandshake(peerId, infoHash); }
 
-	/*
-	 * 
-	 * Handshake:  
-	 * <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
-	 * 
-	 */
+	// <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
+	 
 	public static byte[] genHandshake(byte[] peerId, byte[] infohash) {
 		int index = 0;
 		byte[] handshake = new byte[68];
@@ -520,4 +516,4 @@ public class Peer implements Runnable{
 	}
 
 	private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
-}
+}*/
