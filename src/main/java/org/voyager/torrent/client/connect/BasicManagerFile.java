@@ -47,6 +47,8 @@ public class BasicManagerFile implements ManagerFile{
 
                 process();
 
+                System.out.println("++++++++ ManagerFile +++++++");
+
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
                 semaphoreExecutor.release();

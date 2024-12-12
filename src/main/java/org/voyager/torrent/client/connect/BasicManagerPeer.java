@@ -1,7 +1,10 @@
 package org.voyager.torrent.client.connect;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -15,6 +18,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.exceptions.HandShakeInvalidException;
+import org.voyager.torrent.client.exceptions.NoReaderBufferException;
 import org.voyager.torrent.client.files.Torrent;
 
 public class BasicManagerPeer implements ManagerPeer{
@@ -61,12 +66,14 @@ public class BasicManagerPeer implements ManagerPeer{
 
                 process();
 
+                System.out.println("++++++++ ManagerPeer +++++++");
+
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
                 semaphoreExecutor.release();
             }
             
-            sleep(30);
+            sleep(50);
         }
 
     }
@@ -76,17 +83,38 @@ public class BasicManagerPeer implements ManagerPeer{
 
         select();
         
-        for (SelectionKey key : selector.selectedKeys()) {
-            if (key.isConnectable()) {
-                handlerConnect(key);
-            } else if (key.isReadable()) {
-                handlerRead(key);
-            } else if (key.isWritable()) {
-                handlerWrite(key);
+        Set<SelectionKey> selectedKeys = selector.selectedKeys();
+        Iterator<SelectionKey> iterator = selectedKeys.iterator();
+
+        while (iterator.hasNext()) {
+            
+            SelectionKey key = iterator.next();
+            iterator.remove();
+            
+            try {
+                if (key.isConnectable()) {
+
+                    handlerConnect(key);
+
+                } else if (key.isReadable()) {
+
+                    handlerRead(key);
+
+                } else if (key.isWritable()) {
+
+                    handlerWrite(key);
+
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar chave: " + e.getMessage());
+                key.cancel();
+                closeChannel((SocketChannel) key.channel());
             }
+
+            
         }
 
-        selector.selectedKeys().clear();
+        System.out.println("+++++++++++++++");
 
         processRecieveMsgPiece();
         processSendMsgRequest();
@@ -99,18 +127,82 @@ public class BasicManagerPeer implements ManagerPeer{
         // - Verifica se a conexão foi estabelecida com sucesso.
         // - Pode enviar uma mensagem inicial (como um handshake) para estabelecer a comunicação.
         // - Atualiza o estado do Peer associado ao canal.
-        System.out.println("handlerConnect");
+
+        SocketChannel channel = (SocketChannel) key.channel();
+        PeerNonBlock peer = mapChannelAndPeer.get(channel);
+        
+        System.out.println("handlerConnect: \n\t"+ peer);
+
+        try {
+    
+            // Finalizar a conexão
+            if (channel.finishConnect()) {
+
+                System.out.println("Conexão estabelecida para o peer: \n\t" + peer);
+
+                // Registrar interesse em leitura
+                peer.setConneted(true);
+                peer.setHandshake(false);
+
+                //key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+
+                //key.interestOps(SelectionKey.OP_READ);
+                key.interestOps(SelectionKey.OP_WRITE);
+
+            }
+        } catch (IOException e) {
+            System.err.println("Erro ao estabelecer conexão ou enviar handshake");
+            e.printStackTrace();
+        }
     }
 
     // Hook Selector handler for reading from channels
-    public void handlerRead(SelectionKey key) {
+    public void handlerRead(SelectionKey key) throws IOException{
         // Este método é chamado quando há dados disponíveis para leitura no canal.
         // - Lê os dados do canal no buffer associado.
         // - Passa o controle para o Peer associado para processar a mensagem recebida.
         // - Pode incluir lógica para lidar com fragmentação ou mensagens parciais.
-        System.out.println("handlerRead");
+        
+        
+        SocketChannel channel = (SocketChannel) key.channel();
+        PeerNonBlock peer = mapChannelAndPeer.get(channel);
+        
+        System.out.println("handlerRead: \n\t"+ peer);
 
-        // send queue Pieces in Manager Files
+        try {
+            
+            if(peer.isConnected() && !peer.hasHandshake()){
+
+                peer.readShake(channel);
+                
+                key.interestOps(SelectionKey.OP_READ);
+
+            } else {
+
+                peer.readMsg(channel);
+
+            }
+
+            
+
+        } catch (NoReaderBufferException e) {
+            System.err.println("Erro durante leitura do peer: " + peer);
+            e.printStackTrace();
+
+        } catch (HandShakeInvalidException | ConnectException e) {
+            System.err.println("Erro durante leitura do peer: " + peer);
+            e.printStackTrace();
+
+            channel.close();
+            key.cancel();
+        } catch (IOException e) {
+            System.err.println("Erro durante leitura do peer: " + peer);
+            e.printStackTrace();
+
+            channel.close();
+            key.cancel();
+        }
+       
     }
 
     // Hook Selector handler for writing to channels
@@ -119,11 +211,56 @@ public class BasicManagerPeer implements ManagerPeer{
         // - Recupera dados que precisam ser enviados para o canal (geralmente de uma fila de mensagens do Peer).
         // - Escreve os dados no canal usando buffers.
         // - Pode alternar o interesse do canal para evitar ciclos contínuos de escrita.
-        System.out.println("handlerWrite");
+
+        SocketChannel channel = (SocketChannel) key.channel();
+        PeerNonBlock peer = mapChannelAndPeer.get(channel);
+        
+        System.out.println("handlerWrite: \n\t"+ peer);
+
+        try {
+            
+            if(peer.isConnected() && !peer.hasHandshake()){
+            
+                peer.writeShake(channel);
+
+                key.interestOps(SelectionKey.OP_READ);
+
+            } else {
+
+                //peer.writeMsg(channel);
+
+            }
+
+        } catch (IOException e) {
+            System.err.println("Erro durante leitura do peer: " + peer);
+            e.printStackTrace();
+            key.cancel();
+
+            try { channel.close(); }
+            catch (IOException ex) {
+                System.err.println("Erro ao fechar canal: " + ex.getMessage());
+            }
+        }
+
+        //ByteBuffer buffer = ByteBuffer.wrap(peer.genHandshake());
+        //buffer.order(ByteOrder.LITTLE_ENDIAN); // Configurar como little-endian
+
+        //buffer.flip();
+        
+        //channel.write(buffer);
+
 
         // @Alterar o modo para leitura
     }
     
+    private void closeChannel(SocketChannel channel) {
+        try {
+            channel.close();
+        } catch (IOException e) {
+            System.err.println("Erro ao fechar canal: " + e.getMessage());
+        }
+    }
+
     // Process Queue
     private void processQueueNewsPeer(){
         while(!queueNewsPeer.isEmpty()){

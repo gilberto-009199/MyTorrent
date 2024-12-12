@@ -60,7 +60,11 @@ public class AnnounceRequestUtil {
                     continue;
                 }
                 
-                listPeer.add( new PeerNonBlock().withHost(ip).withPort(peerPort) ); 
+                listPeer.add( 
+                    new PeerNonBlock()
+                    .withHost(ip)
+                    .withPort(peerPort)
+                ); 
             }
         }catch(Exception e){
             System.out.println("Error In Announce:");
