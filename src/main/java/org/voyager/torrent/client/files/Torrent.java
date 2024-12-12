@@ -20,7 +20,9 @@ public class Torrent {
 	public static String dirRuntime = "."+separator;
 
     // Data
+    
     private int fileLength;
+    private byte[] peerId;
     private int pieceLength;
     private String fileName;
     private byte[] infoHash;
@@ -29,12 +31,14 @@ public class Torrent {
     private List<byte[]> listPieceHashes;
 
     public Map<String, String> genAnnounceParameters(){
-        String peerId =  HttpUtil.toHexString(BinaryUtil.genBinaryArray(20));
+
+        if(this.peerId == null)this.peerId =  BinaryUtil.genBinaryArray(20);
+        
         int port        = -1,
             uploaded    = 0,
             downloaded  = 0;
 
-        return genAnnounceParameters(peerId, port, uploaded, downloaded);
+        return genAnnounceParameters( HttpUtil.toHexString(this.peerId), port, uploaded, downloaded);
     }
 
     public Map<String, String> genAnnounceParameters(String peerId){
@@ -91,10 +95,17 @@ public class Torrent {
         return this;
     }
 
-    public byte[] getInfoHash() { return infoHash;  }
+    public byte[] getInfoHash() { return this.infoHash;  }
     public void setInfoHash(byte[] infoHash) { this.infoHash = infoHash; }
     public Torrent withInfoHash(byte[] infoHash) { 
         this.infoHash = infoHash;
+        return this;
+    }
+
+    public byte[] getPeerId(){ return this.peerId; }
+    public void setPeerId(byte[] peerId){ this.peerId = peerId; }
+    public Torrent withPeerId(byte[] peerId){
+        this.peerId = peerId;
         return this;
     }
 
