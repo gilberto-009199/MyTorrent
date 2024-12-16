@@ -15,8 +15,8 @@ public interface ManagerPeer extends Runnable {
 	public ManagerPeer withMaxDownloaderPeerSecond( int maxDownloaderPeerSecond);
 	
 	public Torrent getTorrent();
-	public void queueNewMsg(Peer peer, MsgRequest msg);
-	public void queueNewMsg(Peer peer, MsgPiece msg);
+	public void queueNewMsg(PeerNonBlock peer, MsgRequest msg);
+	public void queueNewMsg(PeerNonBlock peer, MsgPiece msg);
 	public boolean connectError(Peer peer);
 	public boolean shakeHandsError(Peer peer);
 	public boolean downloaded(Peer peer);

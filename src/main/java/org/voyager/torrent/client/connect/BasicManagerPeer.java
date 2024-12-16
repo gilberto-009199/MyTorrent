@@ -8,11 +8,14 @@ import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
@@ -252,6 +255,47 @@ public class BasicManagerPeer implements ManagerPeer{
 
         // @Alterar o modo para leitura
     }
+
+    // Process send Request Pieces in peer
+    private void processSendMsgRequest(){
+        // @todo  add time entry request 500ms
+
+        List<MsgRequest> listMsgRequest = managerFile.calcMsgRequest();
+        // priorite peers for sort 
+        // process send Request for peers contained Piece and retrict max bytes request for peer
+        List<PeerNonBlock> listPeer = mapChannelAndPeer.values().stream()
+                                                                .sorted(Collections.reverseOrder())
+                                                                .toList();
+
+        Map<Peer, List<MsgRequest>> mapPeerAndMsgRequest = new HashMap<>();
+        
+        for (PeerNonBlock peerNonBlock : listPeer) {
+            // verify conected
+            // verify max pieces for peer
+            // registry mapPeerAndMsgRequest
+            // listMsgRequest.remove()
+        }
+
+        for (Entry<Peer, List<MsgRequest>> entry : mapPeerAndMsgRequest.entrySet()) {
+            // send request for peer
+        }
+    }
+    
+    // Process Pieces Recieve from peers
+    private void processRecieveMsgPiece(){
+        while(!queueRecieveMsgPiece.isEmpty()){
+            MsgPiece msg = queueRecieveMsgPiece.poll();
+            managerFile.queueMsg(msg);
+        }
+    }
+
+    private void processRecieveMsgRequest(){
+        // queueRecieveMsgRequest
+        // verify piece exist in managerFile
+        // see exist add queue for return picei
+
+    }
+
     
     private void closeChannel(SocketChannel channel) {
         try {
@@ -289,29 +333,6 @@ public class BasicManagerPeer implements ManagerPeer{
         }
     }
 
-    // Process send Request Pieces in peer
-    private void processSendMsgRequest(){
-        List<MsgRequest> listMsgRequest = managerFile.calcMsgRequest();
-        // priorite peers for sort 
-        // process send peers contained Piece in
-    }
-    
-    // Process Pieces Recieve from peers
-    private void processRecieveMsgPiece(){
-        while(!queueRecieveMsgPiece.isEmpty()){
-            MsgPiece msg = queueRecieveMsgPiece.poll();
-            managerFile.queueMsg(msg);
-        }
-    }
-
-    private void processRecieveMsgRequest(){
-        // queueRecieveMsgRequest
-        // verify piece exist in managerFile
-        // see exist add queue for return picei
-        
-    }
-    
-
     // Hooks Queue's
     //  Queue New Peers from ManagerAnnounce
     public synchronized void queueNewsPeer(PeerNonBlock peer) { queueNewsPeer.add(peer); }
@@ -322,28 +343,27 @@ public class BasicManagerPeer implements ManagerPeer{
 
     //  Queue New Msg from Peers
     @Override
-    public void queueNewMsg(Peer peer, MsgRequest msg) {
+    public void queueNewMsg(PeerNonBlock peer, MsgRequest msg) {
         queueRecieveMsgRequest.add(msg);
     }
 
     @Override
-    public void queueNewMsg(Peer peer, MsgPiece msg) {
+    public void queueNewMsg(PeerNonBlock peer, MsgPiece msg) {
         queueRecieveMsgPiece.add(msg);
     }
 
     // Util selector
     // @todo Mitigar
     private void select(){ try{ selector.select(); }catch(Exception e){ e.printStackTrace(); } }
+
     // @todo Mitigar
     private void initSelector(){ 
         if(selector != null && selector.isOpen())return;
         try{ selector = Selector.open(); }catch(Exception e){e.printStackTrace();}
     }
-    
 
     private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
     private boolean isInterrupted(){ return Thread.currentThread().isInterrupted(); }
-
 
     @Override
     public ManagerPeer withManagerAnnounce(ManagerAnnounce managerAnnounce) {
@@ -365,7 +385,6 @@ public class BasicManagerPeer implements ManagerPeer{
 
     @Override
     public Torrent getTorrent() { return this.torrent; }
-
 
     @Override
     public boolean connectError(Peer peer) {
@@ -408,6 +427,7 @@ public class BasicManagerPeer implements ManagerPeer{
         this.managerFile = managerFile;
         return this;
     }
+
     @Override
     public ManagerPeer withSemaphoreExecutor(Semaphore semaphoreExecutor) {
         this.semaphoreExecutor = semaphoreExecutor;

@@ -72,7 +72,7 @@ public class BasicManagerFile implements ManagerFile{
             //      save file    
             //      clear MsgPiece block 
             //      manteined begin, end , position in MsgPiece
-
+            System.err.println("BasicManagerFile.processRecieveMsgPiece() Fila Pieces: "+ queueRecieveMsgPiece.size());
             // recalc Map
 
         } catch (Exception e) {}
