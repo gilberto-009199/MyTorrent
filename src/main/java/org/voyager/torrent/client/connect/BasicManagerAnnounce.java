@@ -71,7 +71,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
         // if timeVerifyNewsPeersInSecond
         if((currentTime - lastVerifyPeersTime) >= timeVerifyNewsPeersInSecond * 1000) {
             if(optListPeers != null && optListPeers.isPresent()) {
-                for (PeerNonBlock peer : optListPeers.get().subList(0, 11)) {
+                for (PeerNonBlock peer : optListPeers.get().subList(0, 14)) {
                     
                     peer.withPeerId(torrent.getPeerId())
                         .withInfoHash(torrent.getInfoHash());
