@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.voyager.torrent.util.BinaryUtil;
 import org.voyager.torrent.util.HttpUtil;
@@ -132,7 +133,7 @@ public class Torrent {
     public static Torrent of(String path){
         Torrent instance = new Torrent();
 
-        if(path == null || path.isEmpty() || path.isBlank())throw new RuntimeException("File not exist");
+        if(path == null || path.isEmpty())throw new RuntimeException("File not exist");
 
         TorrentInfo info = parceTorrentFile(path);
 
@@ -145,7 +146,7 @@ public class Torrent {
                 .withFileLength(info.file_length)
                 .withFileName(info.file_name)
                 .withInfoHash(info.info_hash.array())
-                .withListPieceHashes(Arrays.stream(info.piece_hashes).map(buffer -> buffer.array()).toList())
+                .withListPieceHashes(Arrays.stream(info.piece_hashes).map(buffer -> buffer.array()).collect(Collectors.toList()))
                 .withPieceLength(info.piece_length);
 
         return instance;

@@ -1,7 +1,6 @@
-package org.voyager.torrent.client.connect;
+package org.voyager.torrent.client.managers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +11,10 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.files.Torrent;
+import org.voyager.torrent.client.messages.MsgPiece;
+import org.voyager.torrent.client.messages.MsgRequest;
 
 public class BasicManagerFile implements ManagerFile{
 

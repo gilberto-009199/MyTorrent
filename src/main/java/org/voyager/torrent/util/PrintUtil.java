@@ -1,10 +1,7 @@
 package org.voyager.torrent.util;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class PrintUtil {
     public static void printTreeUsingCollections(Map<ByteBuffer, Object> map) {
@@ -17,7 +14,7 @@ public class PrintUtil {
             Object element = current[0];
             int depth = (int) current[1];
 
-            String indent = " ".repeat(depth * 4); // Indentação baseada na profundidade
+            String indent = String.join("", Collections.nCopies(depth * 4, " "));// Indentação baseada na profundidade
 
             if (element instanceof Map) {
                 Map<?, ?> currentMap = (Map<?, ?>) element;

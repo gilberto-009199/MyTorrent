@@ -1,4 +1,7 @@
-package org.voyager.torrent.client.connect;
+package org.voyager.torrent.client.managers;
+
+import org.voyager.torrent.client.messages.MsgPiece;
+import org.voyager.torrent.client.messages.MsgRequest;
 
 import java.util.List;
 import java.util.concurrent.Semaphore;

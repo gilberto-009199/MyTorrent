@@ -10,8 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.voyager.torrent.client.connect.Peer;
-import org.voyager.torrent.client.connect.PeerNonBlock;
+import org.voyager.torrent.client.peers.PeerNonBlock;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.util.BinaryUtil;
 import org.voyager.torrent.util.HttpUtil;

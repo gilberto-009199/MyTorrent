@@ -1,29 +1,26 @@
-package org.voyager.torrent.client.connect;
+package org.voyager.torrent.client.managers;
 
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
+import java.util.stream.Collectors;
 
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.peers.Peer;
+import org.voyager.torrent.client.peers.PeerNonBlock;
 import org.voyager.torrent.client.exceptions.HandShakeInvalidException;
 import org.voyager.torrent.client.exceptions.NoReaderBufferException;
 import org.voyager.torrent.client.files.Torrent;
+import org.voyager.torrent.client.messages.MsgPiece;
+import org.voyager.torrent.client.messages.MsgRequest;
 
 public class BasicManagerPeer implements ManagerPeer{
 
@@ -66,11 +63,11 @@ public class BasicManagerPeer implements ManagerPeer{
             try {
 
                 semaphoreExecutor.acquire();
+                System.out.println("++++++++ ManagerPeer +++++++");
 
                 process();
 
-                System.out.println("++++++++ ManagerPeer +++++++");
-
+                System.out.println("+++++++++++++++");
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
                 semaphoreExecutor.release();
@@ -117,7 +114,7 @@ public class BasicManagerPeer implements ManagerPeer{
             
         }
 
-        System.out.println("+++++++++++++++");
+
 
         processRecieveMsgPiece();
         processSendMsgRequest();
@@ -186,7 +183,7 @@ public class BasicManagerPeer implements ManagerPeer{
 
             }
 
-            
+
 
         } catch (NoReaderBufferException e) {
             System.err.println("Erro durante leitura do peer: " + peer);
@@ -265,22 +262,67 @@ public class BasicManagerPeer implements ManagerPeer{
         // process send Request for peers contained Piece and retrict max bytes request for peer
         List<PeerNonBlock> listPeer = mapChannelAndPeer.values().stream()
                                                                 .sorted(Collections.reverseOrder())
-                                                                .toList();
+                                                                .collect(Collectors.toList());
 
-        Map<Peer, List<MsgRequest>> mapPeerAndMsgRequest = new HashMap<>();
-        
+        Map<PeerNonBlock, List<MsgRequest>> mapPeerAndMsgRequest = new HashMap<>();
+
         for (PeerNonBlock peerNonBlock : listPeer) {
-            // verify conected
-            // verify max pieces for peer
-            // registry mapPeerAndMsgRequest
-            // listMsgRequest.remove()
+            if(!peerNonBlock.isConnected) continue;
+
+            if(!peerNonBlock.hasHandshake) continue;
+
+            // @todo colocar choked verify
+            if(peerNonBlock.getPiecesMap() == null) continue;
+
+            if(!peerNonBlock.getSocketChannel().isOpen())continue;
+            if(!peerNonBlock.getSocketChannel().isBlocking())continue;
+
+            List<MsgRequest> listMsgRequestForPeer = new ArrayList<>();
+
+            for (int i = 0;
+                    i < listMsgRequest.size()
+                    &&
+                    listMsgRequestForPeer.size() < 3 ;
+                    i++) {
+                MsgRequest request = listMsgRequest.get(i);
+                byte[] map = peerNonBlock.getPiecesMap().getMap();
+
+                if(map.length >= request.getPosition() && map[request.getPosition()] != 0){
+                    listMsgRequestForPeer.add(request);
+                }
+
+            }
+            listMsgRequest.removeAll(listMsgRequestForPeer);
+
+            mapPeerAndMsgRequest.put(peerNonBlock, listMsgRequestForPeer);
         }
 
-        for (Entry<Peer, List<MsgRequest>> entry : mapPeerAndMsgRequest.entrySet()) {
+        for (Entry<PeerNonBlock, List<MsgRequest>> entry : mapPeerAndMsgRequest.entrySet()) {
             // send request for peer
+            // Map<SocketChannel, PeerNonBlock> mapChannelAndPeer.
+            // Selector selector
+            // code ????
+            PeerNonBlock peerNonBlock = entry.getKey();
+            List<MsgRequest> listMsgRequestForPeer = entry.getValue();
+            SocketChannel socketChannel = peerNonBlock.getSocketChannel();
+            try {
+
+                for(MsgRequest msg : listMsgRequestForPeer){
+                    peerNonBlock.writeMsg(msg);
+                    socketChannel.register(selector, SelectionKey.OP_READ);
+                }
+
+
+
+            }catch(IOException ex){
+                ex.printStackTrace();
+                // @todo verificar mitigação
+            }
+
+
         }
     }
-    
+
     // Process Pieces Recieve from peers
     private void processRecieveMsgPiece(){
         while(!queueRecieveMsgPiece.isEmpty()){
@@ -296,11 +338,9 @@ public class BasicManagerPeer implements ManagerPeer{
 
     }
 
-    
     private void closeChannel(SocketChannel channel) {
-        try {
-            channel.close();
-        } catch (IOException e) {
+        try { channel.close(); }
+        catch (IOException e) {
             System.err.println("Erro ao fechar canal: " + e.getMessage());
         }
     }
@@ -321,7 +361,9 @@ public class BasicManagerPeer implements ManagerPeer{
                 channel.socket().setSoTimeout(30000);
 
                 channel.register(selector, SelectionKey.OP_CONNECT);
-    
+
+                peer.setSocketChannel(channel);
+
                 mapChannelAndPeer.put(channel, peer);
     
                 System.out.println("Peer registrado: " + peer);

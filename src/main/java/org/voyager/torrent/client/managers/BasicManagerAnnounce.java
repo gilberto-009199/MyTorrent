@@ -1,10 +1,11 @@
-package org.voyager.torrent.client.connect;
+package org.voyager.torrent.client.managers;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Semaphore;
 
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.peers.PeerNonBlock;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.util.AnnounceRequestUtil;
 
@@ -59,7 +60,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
 
         long currentTime = System.currentTimeMillis();
 
-        Optional<List<PeerNonBlock>> optListPeers = null; 
+        Optional<List<PeerNonBlock>> optListPeers = null;
 
         // if timeReAnnounceInSecond
         if((currentTime - lastAnnounceTime) >= timeReAnnounceInSecond * 1000) {
@@ -71,7 +72,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
         // if timeVerifyNewsPeersInSecond
         if((currentTime - lastVerifyPeersTime) >= timeVerifyNewsPeersInSecond * 1000) {
             if(optListPeers != null && optListPeers.isPresent()) {
-                for (PeerNonBlock peer : optListPeers.get().subList(0, 14)) {
+                for (PeerNonBlock peer : optListPeers.get()) {
                     
                     peer.withPeerId(torrent.getPeerId())
                         .withInfoHash(torrent.getInfoHash());

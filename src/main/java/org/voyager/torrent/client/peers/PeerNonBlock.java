@@ -1,29 +1,32 @@
-package org.voyager.torrent.client.connect;
+package org.voyager.torrent.client.peers;
 
 import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
 
 import org.voyager.torrent.client.exceptions.HandShakeInvalidException;
 import org.voyager.torrent.client.exceptions.NoReaderBufferException;
+import org.voyager.torrent.client.files.PiecesMap;
+import org.voyager.torrent.client.managers.ManagerPeer;
+import org.voyager.torrent.client.messages.MsgPiece;
+import org.voyager.torrent.client.messages.MsgRequest;
 import org.voyager.torrent.util.BinaryUtil;
 
 public class PeerNonBlock implements Comparable<PeerNonBlock>{
 
 	// code msg 
-	public static final byte 	MsgChoke			= 0;
-	public static final byte 	MsgUnchoke			= 1;
-	public static final byte 	MsgInterested		= 2;
-	public static final byte 	MsgNotInterested	= 3;
-	public static final byte 	MsgHave				= 4;
-	public static final byte 	MsgBitfield			= 5;
-	public static final byte 	MsgRequest			= 6;
-	public static final byte 	MsgPiece			= 7;
-	public static final byte 	MsgCancel			= 8;
+	public static final byte 	ID_MsgChoke			= 0;
+	public static final byte 	ID_MsgUnchoke			= 1;
+	public static final byte 	ID_MsgInterested		= 2;
+	public static final byte 	ID_MsgNotInterested	= 3;
+	public static final byte 	ID_MsgHave				= 4;
+	public static final byte 	ID_MsgBitfield			= 5;
+	public static final byte 	ID_MsgRequest			= 6;
+	public static final byte 	ID_MsgPiece			= 7;
+	public static final byte 	ID_MsgCancel			= 8;
 	public static final byte[]	Protocol			= BinaryUtil.stringToByteBuffer("BitTorrent protocol").array();
 
 	// Info 
@@ -40,7 +43,7 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 	// Data Connection
 	public boolean isConnected = false; // CONNECT SOCKET
 	public boolean hasHandshake = false; // Connect Socket and shake Hands 
-	private SocketChannel socket = null;
+	private SocketChannel socketChannel = null;
 	
 	//	Data Pieces
 	private PiecesMap piecesMap;
@@ -65,11 +68,28 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 		this.piecesMap = new PiecesMap(client.getTorrent());
 	}
 
+	public void writeMsg(MsgPiece msg) throws IOException { writeMsg(socketChannel, msg); }
+	public void writeMsg(SocketChannel channel, MsgPiece msg) throws IOException {
+		ByteBuffer buffer = ByteBuffer.wrap(msg.toPacket());
+		channel.write(buffer);
+		//buffer.flip();
+		buffer.clear();
+	}
 
+	public void writeMsg(MsgRequest msg) throws IOException { this.writeMsg(this.socketChannel, msg);	}
+	public void writeMsg(SocketChannel channel, MsgRequest msg) throws IOException {
+		ByteBuffer buffer = ByteBuffer.wrap(msg.toPacket());
+		channel.write(buffer);
+		//buffer.flip();
+		buffer.clear();
+	}
+
+	public void writeShake() throws IOException { this.writeShake(this.socketChannel);	}
 	public void writeShake(SocketChannel channel) throws IOException {
 		ByteBuffer buffer = ByteBuffer.wrap(genHandshake());
 		channel.write(buffer);
-		buffer.flip();
+		//buffer.flip();
+		buffer.clear();
 	}
 
 	public void readShake(SocketChannel channel) throws IOException{
@@ -138,59 +158,59 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 
 		messageBuffer.flip();
 
-		byte state = messageBuffer.get();
-
 		byte[] buff = new byte[messageBuffer.remaining()];
 		messageBuffer.get(buff);
 
+		byte state = buff[0];
+
 		switch (state) {
-			case MsgChoke:
+			case ID_MsgChoke:
 				System.out.println("Received MsgChoke: Peer is now choked.");
 				countMsgChoke++;
 				
 				setChoked(true);
 				
 				break;
-			case MsgUnchoke:
+			case ID_MsgUnchoke:
 				System.out.println("Received MsgUnchoke: Peer is now unchoked.");
 				countMsgUnChoke++;
 
 				setChoked(false);
 				
 				break;
-			case MsgInterested:
+			case ID_MsgInterested:
 				System.out.println("Received MsgInterested: Peer is interested.");
 				countMsgInterest++;
 				break;
-			case MsgNotInterested:
+			case ID_MsgNotInterested:
 				System.out.println("Received MsgNotInterested: Peer is not interested.");
 				countMsgNotInterest++;
 				break;
-			case MsgHave:
+			case ID_MsgHave:
 				System.out.println("Received MsgHave: Peer has new piece.");
 
 				break;
-			case MsgBitfield:
+			case ID_MsgBitfield:
 				System.out.println("Received MsgBitfield: Peer sent bitfield.");
 				
 				this.piecesMap = new PiecesMap(buff, buff.length);
 
 				break;
-			case MsgRequest:
+			case ID_MsgRequest:
 				System.out.println("Received MsgRequest: Peer requested a piece.");
 				countMsgRequest++;
 				
 				processMsgRequest(buff);
 
 				break;
-			case MsgPiece:
+			case ID_MsgPiece:
 				System.out.println("Received MsgPiece: Received a piece of data.");
 				countMsgPieces++;
 
 				processMsgPiece(buff);
 
 				break;
-			case MsgCancel:
+			case ID_MsgCancel:
 				System.out.println("Received MsgCancel: Peer cancelled a request.");
 
 				break;
@@ -334,6 +354,9 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 		this.infoHash = infoHash;
 		return this;
 	}
+
+	public SocketChannel getSocketChannel() { return socketChannel;	}
+	public void setSocketChannel(SocketChannel socketChannel) { this.socketChannel = socketChannel;}
 
 	public boolean hasHandshake() { return this.hasHandshake; }
 	public void setHandshake(boolean hasHandshake) { this.hasHandshake = hasHandshake; }
