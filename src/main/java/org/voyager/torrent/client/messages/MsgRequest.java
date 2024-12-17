@@ -1,8 +1,16 @@
-package org.voyager.torrent.client.connect;
+package org.voyager.torrent.client.messages;
 
-import javax.management.RuntimeErrorException;
 
-public class MsgRequest {
+/* @doc:
+        https://wiki.theory.org/BitTorrentSpecification#Messages
+	    <len=0013><id=6><index><begin><length>
+        The request message is fixed length, and is used to request a block.
+        The payload contains the following information:
+         + index: integer specifying the zero-based piece index
+         + begin: integer specifying the zero-based byte offset within the piece
+         + length: integer specifying the requested length.
+*/
+public class MsgRequest implements Msg{
 
     public static final int ID = 6;
     

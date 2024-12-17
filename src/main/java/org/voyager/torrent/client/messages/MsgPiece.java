@@ -1,16 +1,25 @@
-package org.voyager.torrent.client.connect;
+package org.voyager.torrent.client.messages;
 
-public class MsgPiece {
+
+/* @doc:
+        https://wiki.theory.org/BitTorrentSpecification#Messages
+	    <len=0009+X><id=7><index><begin><block>
+        The piece message is variable length, where X is the length of the block.
+        The payload contains the following information:
+            + index: integer specifying the zero-based piece index
+            + begin: integer specifying the zero-based byte offset within the piece
+            + block: block of data, which is a subset of the piece specified by index.
+*/
+public class MsgPiece implements Msg{
 
     public static final int ID = 7;
 
     private int end;
     private int begin;
     private int position;
-
     private byte[] block;
 
-    //	<len=0009+X><id=7><index><begin><block>
+    //	<len=0009+X><id=7><index|position><begin><block>
     public MsgPiece(int position, int begin, byte[] block){
         this.position = position;
         this.begin = begin;
@@ -76,6 +85,7 @@ public class MsgPiece {
         return packet;
     }
 
+
     public MsgPiece withPosition(int position){
         this.position = position;
         return this;
@@ -100,6 +110,7 @@ public class MsgPiece {
     public byte[] getBlock() {  return block; }
     public void setBlock(byte[] block) { this.block = block; }
 
+    @Override
     public String toString(){
         //	<len=0009+X><id=7><index><begin><block>
         return "MsgPiece[position: "+ position +", begin: "+ begin+", end: "+ end +", block: [length: "+ (begin - end) +"]]";

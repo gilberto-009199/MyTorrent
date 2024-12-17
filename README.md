@@ -8,11 +8,14 @@
    + .torrent OK!
    + announce servers OK!
    + connect others peers OK!
-   + Implement Life Cicly:
-      + send MsgBitfield      ~
+   + Implement Life Cycle:
+      + send MsgBitfield      OK
       + send MsgRequest       ~
-      + MsgCancel, MsgNotInterested, MsgChoke, MsgPiece
-      + Otimize and Mitigation Cases
+      + MsgPiece
+      + MsgCancel, 
+      + MsgNotInterested/MsgInterested
+      + MsgChoke/MsgUnChoke ~
+      + Otimize and Mitigation Cases ~
 
 ## Referencias
    [WikiBitTorrent](https://wiki.theory.org/Main_Page)

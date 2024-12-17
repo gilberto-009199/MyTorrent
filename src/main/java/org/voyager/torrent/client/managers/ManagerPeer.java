@@ -1,8 +1,12 @@
-package org.voyager.torrent.client.connect;
+package org.voyager.torrent.client.managers;
 
 import java.util.concurrent.Semaphore;
 
+import org.voyager.torrent.client.peers.Peer;
+import org.voyager.torrent.client.peers.PeerNonBlock;
 import org.voyager.torrent.client.files.Torrent;
+import org.voyager.torrent.client.messages.MsgPiece;
+import org.voyager.torrent.client.messages.MsgRequest;
 
 
 /* meu circulo de vida de gerenciador*/

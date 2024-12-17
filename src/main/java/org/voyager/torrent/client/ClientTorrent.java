@@ -1,21 +1,14 @@
 package org.voyager.torrent.client;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
-import org.voyager.torrent.client.connect.BasicManagerAnnounce;
-import org.voyager.torrent.client.connect.BasicManagerFile;
-import org.voyager.torrent.client.connect.BasicManagerPeer;
-import org.voyager.torrent.client.connect.ManagerAnnounce;
-import org.voyager.torrent.client.connect.ManagerFile;
-import org.voyager.torrent.client.connect.ManagerPeer;
-import org.voyager.torrent.client.connect.Peer;
+import org.voyager.torrent.client.managers.BasicManagerAnnounce;
+import org.voyager.torrent.client.managers.BasicManagerFile;
+import org.voyager.torrent.client.managers.BasicManagerPeer;
+import org.voyager.torrent.client.managers.ManagerAnnounce;
+import org.voyager.torrent.client.managers.ManagerFile;
+import org.voyager.torrent.client.managers.ManagerPeer;
 import org.voyager.torrent.client.files.Torrent;
-import org.voyager.torrent.client.util.AnnounceRequestUtil;
 
 public class ClientTorrent{ 
 

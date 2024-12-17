@@ -1,4 +1,4 @@
-package org.voyager.torrent.client.connect;
+package org.voyager.torrent.client.managers;
 
 import java.util.concurrent.Semaphore;
 
