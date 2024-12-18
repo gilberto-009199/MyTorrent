@@ -32,7 +32,7 @@ public class AnnounceRequestUtil {
 
         try{
             URL url_announce = new URL(announce+"?"+HttpUtil.getParamsString(parameters));
-            
+
             // get data for connect pars
             HttpURLConnection con = (HttpURLConnection) url_announce.openConnection();
             con.setRequestMethod("GET");

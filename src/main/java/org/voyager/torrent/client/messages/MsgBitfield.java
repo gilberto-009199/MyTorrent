@@ -21,7 +21,7 @@ public class MsgBitfield implements Msg{
 		int index = 0;
 		if(packet[index++] != ID){
 			throw new RuntimeException("Packet Not MsgBitfield");
-		};
+		}
 
 		byte[] bitfield = new byte[packet.length - index];
 		System.arraycopy(packet, index, bitfield, 0, bitfield.length);

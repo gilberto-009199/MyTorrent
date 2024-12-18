@@ -41,16 +41,16 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
         while(!isInterrupted()){
             try{
                 semaphoreExecutor.acquire();
-
+                System.out.println("++++++++ ManagerAnounce ++++");
                 process();
 
-                System.out.println("++++++++ ManagerAnounce +++++++");
+
 
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
                 semaphoreExecutor.release();
             }
-            
+            System.out.println("------ ManagerAnounce ----");
             sleep(timeLoop);
         }
     }
@@ -73,7 +73,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
         if((currentTime - lastVerifyPeersTime) >= timeVerifyNewsPeersInSecond * 1000) {
             if(optListPeers != null && optListPeers.isPresent()) {
                 for (PeerNonBlock peer : optListPeers.get()) {
-                    
+
                     peer.withPeerId(torrent.getPeerId())
                         .withInfoHash(torrent.getInfoHash());
 
