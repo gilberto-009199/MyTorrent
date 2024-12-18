@@ -67,12 +67,13 @@ public class BasicManagerPeer implements ManagerPeer{
 
                 process();
 
-                System.out.println("+++++++++++++++");
+
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
                 semaphoreExecutor.release();
             }
-            
+
+            System.out.println("-------- ManagerPeer -------");
             sleep(50);
         }
 
@@ -107,8 +108,9 @@ public class BasicManagerPeer implements ManagerPeer{
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar chave: " + e.getMessage());
-                key.cancel();
+                e.printStackTrace();
                 closeChannel((SocketChannel) key.channel());
+                key.cancel();
             }
 
             
@@ -138,21 +140,20 @@ public class BasicManagerPeer implements ManagerPeer{
             // Finalizar a conexão
             if (channel.finishConnect()) {
 
-                System.out.println("Conexão estabelecida para o peer: \n\t" + peer);
+                System.out.println("\t Conexão estabelecida para o peer: " + peer);
 
                 // Registrar interesse em leitura
                 peer.setConneted(true);
                 peer.setHandshake(false);
 
-                //key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-
-                //key.interestOps(SelectionKey.OP_READ);
                 key.interestOps(SelectionKey.OP_WRITE);
 
             }
+
         } catch (IOException e) {
-            System.err.println("Erro ao estabelecer conexão ou enviar handshake");
-            e.printStackTrace();
+            System.err.println("Erro na coneção ou handshake: \t"+ e.getMessage());
+            closeChannel(channel);
+            key.cancel();
         }
     }
 
@@ -188,18 +189,19 @@ public class BasicManagerPeer implements ManagerPeer{
         } catch (NoReaderBufferException e) {
             System.err.println("Erro durante leitura do peer: " + peer);
             e.printStackTrace();
-
         } catch (HandShakeInvalidException | ConnectException e) {
             System.err.println("Erro durante leitura do peer: " + peer);
+
             e.printStackTrace();
 
-            channel.close();
+            closeChannel(channel);
             key.cancel();
         } catch (IOException e) {
             System.err.println("Erro durante leitura do peer: " + peer);
+
             e.printStackTrace();
 
-            channel.close();
+            closeChannel(channel);
             key.cancel();
         }
        

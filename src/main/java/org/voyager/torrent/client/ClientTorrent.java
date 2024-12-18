@@ -34,6 +34,7 @@ public class ClientTorrent{
 	private ManagerPeer managerPeer;
 	private Thread thrManagerPeer;
 
+	// @todo add config for parameters or Builder
 	public ClientTorrent(String torrentFile){ torrent = Torrent.of(torrentFile);}
 	public ClientTorrent(String torrentFile, boolean verbouse){ 
 		this.verbouse = verbouse; 

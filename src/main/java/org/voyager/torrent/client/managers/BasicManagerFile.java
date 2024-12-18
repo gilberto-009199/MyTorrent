@@ -55,6 +55,7 @@ public class BasicManagerFile implements ManagerFile{
               finally {
                 semaphoreExecutor.release();
             }
+            System.out.println("-------- ManagerFile -------");
             sleep(1000);
         }
     }
