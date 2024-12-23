@@ -28,6 +28,11 @@ public class MsgBitfield implements Msg{
 		this.map = new PiecesMap(bitfield, bitfield.length);
 	}
 
+	public int length(){
+		// <4 bytes LEN> + <1 byte ID> + <pieceMap>
+		return 4 + 1 + map.getMap().length;
+	}
+
 	@Override
 	public byte[] toPacket() {
 		int length = 1 + map.getMap().length;
@@ -49,6 +54,19 @@ public class MsgBitfield implements Msg{
 
 		//	<len=0001+X><id=5><bitfield>
 		return packet;
+	}
+
+	@Override
+	public int getID(){ return ID; }
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (! (obj instanceof MsgBitfield))return false;
+
+		MsgBitfield msg = (MsgBitfield) obj;
+		return map.equals(msg.map);
 	}
 
 	@Override

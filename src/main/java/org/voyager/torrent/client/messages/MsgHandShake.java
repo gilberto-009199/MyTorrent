@@ -89,6 +89,11 @@ public class MsgHandShake implements Msg{
 
 	// @todo create metodos for verify extensions
 
+	public int length(){
+		// <1 Byte Identifilter Protocol>< X bytes Protocol><8 Bytes Extensions Protocol><X Bytes info_hash><X Bytes Peer ID>
+		return 1 + PROTOCOL.length + 8 + infoHash.length + peerId.length;
+	}
+
 	// <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
 	@Override
 	public byte[] toPacket() {
@@ -131,6 +136,23 @@ public class MsgHandShake implements Msg{
 
 	public byte[] getPeerId() { return peerId; }
 	public void setPeerId(byte[] peerId) { this.peerId = peerId; }
+
+	@Override
+	public int getID(){ return 0; }
+
+
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (! (obj instanceof MsgHandShake))return false;
+
+		MsgHandShake msg = (MsgHandShake) obj;
+
+		return Arrays.equals(infoHash, msg.infoHash) &&
+			   Arrays.equals(extension, msg.extension) &&
+			   Arrays.equals(protocol, msg.protocol) &&
+			   Arrays.equals(peerId, msg.peerId);
+	}
 
 	public String toString(){
 		return "MsgHandShake[protocol: "+ new String(protocol, StandardCharsets.UTF_8) +", clientType: "+ clientType +", peerId: "+ new String(peerId, StandardCharsets.UTF_8) +", extension: "+ Arrays.toString(extension) +", infoHash: "+ Arrays.toString(infoHash) +"]";

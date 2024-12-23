@@ -51,9 +51,14 @@ public class MsgRequest implements Msg{
             packet[index++] << 24   +
             packet[index++] << 16   +
             packet[index++] << 8    +
-            packet[index++]
+            packet[index]
         );
         
+    }
+
+    public int length(){
+        // <4 Byte Length><1 Bytes ID><4 Bytes position><4 Bytes begin><4 Bytes length>
+        return 4 + 1 + 4 + 4 + 4;
     }
 
     //	<len=0013><id=6><index><begin><length>
@@ -105,6 +110,22 @@ public class MsgRequest implements Msg{
     public void setBegin(int begin) {  this.begin = begin; }
     public int getLength() {  return length; }
     public void setLength(int length) { this.length = length; }
+
+    @Override
+    public int getID(){ return ID; }
+
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (! (obj instanceof MsgRequest))return false;
+
+        MsgRequest msg = (MsgRequest) obj;
+
+        return position == msg.position &&
+               begin == msg.begin &&
+               length == msg.length;
+    }
+
     public String toString(){
         //	<len=0013><id=6><index><begin><length>
         return "MsgRequest[position: "+ position +", begin: "+ begin+", length: "+ length +"]";

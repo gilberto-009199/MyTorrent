@@ -31,6 +31,11 @@ public class MsgPort implements Msg{
 		);
 	}
 
+	public int length(){
+		// <4 Byte Length><1 Bytes ID><4 Bytes position>
+		return 4 + 1 + 4;
+	}
+
 	// <len=0003><id=9><listen-port>
 	@Override
 	public byte[] toPacket() {
@@ -45,6 +50,18 @@ public class MsgPort implements Msg{
 				(byte)(port >> 8),
 				(byte)(port)
 		};
+	}
+	@Override
+	public int getID(){ return ID; }
+
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (! (obj instanceof MsgPort))return false;
+
+		MsgPort msg = (MsgPort) obj;
+
+		return port == msg.port;
 	}
 
 	@Override

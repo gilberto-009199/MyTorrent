@@ -1,7 +1,5 @@
 package org.voyager.torrent.client.messages;
 
-import org.voyager.torrent.client.files.PiecesMap;
-
 /* @doc:
         https://wiki.theory.org/BitTorrentSpecification#Messages
 	    <len=0013><id=8><index><begin><length>
@@ -55,6 +53,11 @@ public class MsgCancel implements Msg{
 
     }
 
+    public int length(){
+        // <4 bytes LEN> + <1 byte ID> + <4 bytes INDEX> + <4 bytes BEGIN> + <4 bytes LENGTH>
+        return 4 + 1 + 4 + 4 + 4;
+    }
+
     //	<len=0013><id=8><index><begin><length>
     public byte[] toPacket(){
         return new byte[]{
@@ -79,6 +82,21 @@ public class MsgCancel implements Msg{
                 (byte) length
         };
     }
+
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (! (obj instanceof MsgCancel))return false;
+
+        MsgCancel msg = (MsgCancel) obj;
+
+        return position == msg.position &&
+               begin == msg.begin &&
+               length == msg.length;
+    }
+
+    @Override
+    public int getID(){ return ID; }
 
     @Override
     public String toString(){

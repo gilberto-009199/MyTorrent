@@ -83,16 +83,17 @@ public class ClientTorrent{
             thrManagerAnnounce.start();
         }
 
+		if (thrManagerFile == null || !thrManagerFile.isAlive()) {
+			thrManagerFile = new Thread(managerFile, "ManagerFileThread");
+			thrManagerFile.start();
+		}
+
         if (thrManagerPeer == null || !thrManagerPeer.isAlive()) {
             thrManagerPeer = new Thread(managerPeer, "ManagerPeerThread");
             thrManagerPeer.start();
         }
 
-        if (thrManagerFile == null || !thrManagerFile.isAlive()) {
-            thrManagerFile = new Thread(managerFile, "ManagerFileThread");
-            thrManagerFile.start();
-			
-        }
+
     }
 
     // Stop all threads and reset the semaphore
@@ -118,14 +119,14 @@ public class ClientTorrent{
             }
         }
 
-        if (thrManagerFile != null && thrManagerFile.isAlive()) {
-            thrManagerFile.interrupt();
-            try {
-                thrManagerFile.join();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
+		if (thrManagerFile != null && thrManagerFile.isAlive()) {
+			thrManagerFile.interrupt();
+			try {
+				thrManagerFile.join();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
 
         semaphoreExecutor = null;
     }
