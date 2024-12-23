@@ -18,7 +18,10 @@ public class MsgNotInterested implements Msg{
 			throw new RuntimeException("Packet Not MsgNotInterested");
 		};
 	}
-
+	public int length(){
+		// <4 Byte Length><1 Bytes ID>
+		return 4 + 1;
+	}
 	//	<len=0001><id=3>
 	public byte[] toPacket(){
 		return new byte[]{
@@ -27,6 +30,17 @@ public class MsgNotInterested implements Msg{
 				// <id=3> (1 byte)
 				ID
 		};
+	}
+
+	@Override
+	public int getID(){ return ID; }
+
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (! (obj instanceof MsgNotInterested))return false;
+
+		return true;
 	}
 
 	@Override

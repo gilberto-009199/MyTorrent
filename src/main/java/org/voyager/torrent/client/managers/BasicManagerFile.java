@@ -1,10 +1,9 @@
 package org.voyager.torrent.client.managers;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.io.RandomAccessFile;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
@@ -15,6 +14,8 @@ import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.messages.MsgPiece;
 import org.voyager.torrent.client.messages.MsgRequest;
+import org.voyager.torrent.client.util.FileTorrentUtil;
+import org.voyager.torrent.util.FileUtil;
 
 public class BasicManagerFile implements ManagerFile{
 
@@ -27,6 +28,8 @@ public class BasicManagerFile implements ManagerFile{
     private ManagerAnnounce managerAnnounce;
 
     private Queue<MsgPiece> queueRecieveMsgPiece;
+
+    private RandomAccessFile randomAccessFile;
 
     // mapped packets MsgPiece
     private Map<Integer, List<MsgPiece>> mapReciveMsgPiece;
@@ -43,13 +46,15 @@ public class BasicManagerFile implements ManagerFile{
 
     @Override
     public void run() {
+
+        initFileSystem();
+
         while(!isInterrupted()){
             try {
                 semaphoreExecutor.acquire();
+                System.out.println("++++++++ ManagerFile +++++++");
 
                 process();
-
-                System.out.println("++++++++ ManagerFile +++++++");
 
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
@@ -59,7 +64,52 @@ public class BasicManagerFile implements ManagerFile{
             sleep(1000);
         }
     }
-    
+
+    private void initFileSystem() {
+
+        String home = System.getProperty("user.home");
+
+        // Constrói o caminho do diretório de download usando Paths
+        String dirName = Base64.getEncoder().encodeToString(torrent.getInfoHash());
+        Path dirDownload = Paths.get(home, dirName);
+
+        // Exibe o caminho final para validação (opcional)
+        System.out.println("Dir: " + dirDownload);
+
+        FileUtil.createDirectoryIfNotExist(dirDownload.toString());
+
+        // create file and sabe
+        Path file = Paths.get(dirDownload.toString(), torrent.getFileName());
+        randomAccessFile = FileUtil.createFileEmptyIfNotExist( torrent.getFileLength(), file.toFile());
+
+        verifyFileSystem();
+    }
+
+    private void verifyFileSystem(){
+
+        try{
+            lockMap.lock();
+
+            List<byte[]> listPieceHashes = torrent.getListPieceHashes();
+            byte[] binaryMap = map.getMap();
+
+            int pieceLength = binaryMap.length;
+            long fileLength = torrent.getFileLength();
+
+            for(int i = 0; i < binaryMap.length; i++) {
+                byte[] sha = listPieceHashes.get(i);
+                boolean valid = FileTorrentUtil.verify(i, sha, randomAccessFile, pieceLength, fileLength);
+                binaryMap[i] = (byte) (valid ? 1 : 0);
+            }
+
+            map = new PiecesMap(binaryMap, pieceLength);
+
+        }finally {
+            lockMap.unlock();
+        }
+
+    }
+
     private void process(){
         // process MsgPices recieve in My Queue 
         processRecieveMsgPiece();
@@ -93,8 +143,8 @@ public class BasicManagerFile implements ManagerFile{
             
             //map.reCalcMap();
 
-            byte[] mapBinary = map.getMap();
-            for(int index = 0; index < mapBinary.length; index++){
+            byte[] binaryMap = map.getMap();
+            for(int index = 0; index < binaryMap.length; index++){
                 listMsgRequest.addAll(genListMsgRequestFromPiece(index));
             }
 

@@ -2,6 +2,8 @@ package org.voyager.torrent.client.files;
 
 import GivenTools.TorrentInfo;
 
+import java.util.Arrays;
+
 public class PiecesMap {
 
     private byte[] map;
@@ -75,6 +77,19 @@ public class PiecesMap {
     public void setSizePiece(int sizePiece){this.sizePiece = sizePiece;}
     public int getSizePiece(){ return this.sizePiece; }
     
+
+
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (! (obj instanceof PiecesMap))return false;
+
+        PiecesMap piecesMap = (PiecesMap) obj;
+        return map.length == piecesMap.map.length &&
+                sizePiece == piecesMap.sizePiece &&
+                Arrays.equals(map, piecesMap.map);
+    }
+
     public String toString(){
         double progress = ((double) totalPieces() / map.length) * 100;
         return String.format("Progress: %.2f%% (%d/%d peças)", progress, totalPieces(), map.length);

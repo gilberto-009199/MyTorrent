@@ -18,6 +18,23 @@ public class MsgChoke implements Msg{
 				ID
 		};
 	}
+
+	public int length(){
+		// <4 bytes LEN> + <1 byte ID>
+		return 4 + 1;
+	}
+
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (! (obj instanceof MsgChoke))return false;
+
+		return true;
+	}
+
+	@Override
+	public int getID(){ return ID; }
+
 	@Override
 	public String toString(){
 		return "MsgChoke[]";

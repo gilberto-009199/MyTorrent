@@ -19,6 +19,10 @@ public class MsgInterested implements Msg{
 		};
 	}
 
+	public int length(){
+		// <4 Byte Length><1 Bytes ID>
+		return 4 + 1;
+	}
 	//	<len=0001><id=2>
 	public byte[] toPacket(){
 		return new byte[]{
@@ -27,6 +31,17 @@ public class MsgInterested implements Msg{
 				// <id=4> (1 byte)
 				ID
 		};
+	}
+
+	@Override
+	public int getID(){ return ID; }
+
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (! (obj instanceof MsgInterested))return false;
+
+		return true;
 	}
 
 	@Override

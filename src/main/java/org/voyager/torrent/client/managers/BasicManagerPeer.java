@@ -74,7 +74,7 @@ public class BasicManagerPeer implements ManagerPeer{
             }
 
             System.out.println("-------- ManagerPeer -------");
-            sleep(50);
+            sleep(80);
         }
 
     }
@@ -106,21 +106,19 @@ public class BasicManagerPeer implements ManagerPeer{
                     handlerWrite(key);
 
                 }
+
             } catch (Exception e) {
                 System.err.println("Erro ao processar chave: " + e.getMessage());
                 e.printStackTrace();
                 closeChannel((SocketChannel) key.channel());
                 key.cancel();
             }
-
-            
         }
 
-
-
-        processRecieveMsgPiece();
+        processReceiveMsgPiece();
         processSendMsgRequest();
-        processRecieveMsgRequest();
+        processReceiveMsgRequest();
+        // @todo process send keep-alive
     }
 
     // Hook Selector handler for handling completed connections
@@ -132,26 +130,26 @@ public class BasicManagerPeer implements ManagerPeer{
 
         SocketChannel channel = (SocketChannel) key.channel();
         PeerNonBlock peer = mapChannelAndPeer.get(channel);
-        
-        System.out.println("handlerConnect: \n\t"+ peer);
+
+        System.out.println("handlerConnect: "+ peer);
 
         try {
     
             // Finalizar a conexão
             if (channel.finishConnect()) {
 
-                System.out.println("\t Conexão estabelecida para o peer: " + peer);
-
-                // Registrar interesse em leitura
                 peer.setConneted(true);
                 peer.setHandshake(false);
 
-                key.interestOps(SelectionKey.OP_WRITE);
+                System.out.println("\t Conexão estabelecida para o peer: " + peer);
+
+                // Registrar interesse em escrita para enviar handshake
+                key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
 
             }
 
         } catch (IOException e) {
-            System.err.println("Erro na coneção ou handshake: \t"+ e.getMessage());
+            System.err.println("Erro na conexão ou handshake: \t"+ e.getMessage());
             closeChannel(channel);
             key.cancel();
         }
@@ -163,12 +161,14 @@ public class BasicManagerPeer implements ManagerPeer{
         // - Lê os dados do canal no buffer associado.
         // - Passa o controle para o Peer associado para processar a mensagem recebida.
         // - Pode incluir lógica para lidar com fragmentação ou mensagens parciais.
-        
-        
+
         SocketChannel channel = (SocketChannel) key.channel();
         PeerNonBlock peer = mapChannelAndPeer.get(channel);
-        
-        System.out.println("handlerRead: \n\t"+ peer);
+
+        if(!channel.isOpen())return;
+        if(channel.isBlocking())return;
+
+        System.out.println("handlerRead: "+ peer);
 
         try {
             
@@ -176,7 +176,6 @@ public class BasicManagerPeer implements ManagerPeer{
 
                 peer.readShake(channel);
                 
-                key.interestOps(SelectionKey.OP_READ);
 
             } else {
 
@@ -184,12 +183,16 @@ public class BasicManagerPeer implements ManagerPeer{
 
             }
 
-
+            key.interestOps(SelectionKey.OP_WRITE);
 
         } catch (NoReaderBufferException e) {
             System.err.println("Erro durante leitura do peer: " + peer);
             e.printStackTrace();
-        } catch (HandShakeInvalidException | ConnectException e) {
+        } catch (ConnectException e){
+            System.err.println("ConnectException: " + peer);
+            closeChannel(channel);
+            key.cancel();
+        } catch (HandShakeInvalidException e) {
             System.err.println("Erro durante leitura do peer: " + peer);
 
             e.printStackTrace();
@@ -216,43 +219,30 @@ public class BasicManagerPeer implements ManagerPeer{
 
         SocketChannel channel = (SocketChannel) key.channel();
         PeerNonBlock peer = mapChannelAndPeer.get(channel);
-        
-        System.out.println("handlerWrite: \n\t"+ peer);
+
+        if(!channel.isOpen())return;
+
+        System.out.println("handlerWrite: "+ peer);
 
         try {
             
             if(peer.isConnected() && !peer.hasHandshake()){
-            
                 peer.writeShake(channel);
-
-                key.interestOps(SelectionKey.OP_READ);
-
-            } else {
-
-                //peer.writeMsg(channel);
-
             }
+            if(peer.hasHandshake() && !peer.hasChoked()){
+                peer.processQueueNewMsg();
+            }
+
+            key.interestOps(SelectionKey.OP_READ);
 
         } catch (IOException e) {
             System.err.println("Erro durante leitura do peer: " + peer);
+
             e.printStackTrace();
+
+            closeChannel(channel);
             key.cancel();
-
-            try { channel.close(); }
-            catch (IOException ex) {
-                System.err.println("Erro ao fechar canal: " + ex.getMessage());
-            }
         }
-
-        //ByteBuffer buffer = ByteBuffer.wrap(peer.genHandshake());
-        //buffer.order(ByteOrder.LITTLE_ENDIAN); // Configurar como little-endian
-
-        //buffer.flip();
-        
-        //channel.write(buffer);
-
-
-        // @Alterar o modo para leitura
     }
 
     // Process send Request Pieces in peer
@@ -260,6 +250,7 @@ public class BasicManagerPeer implements ManagerPeer{
         // @todo  add time entry request 500ms
 
         List<MsgRequest> listMsgRequest = managerFile.calcMsgRequest();
+
         // priorite peers for sort 
         // process send Request for peers contained Piece and retrict max bytes request for peer
         List<PeerNonBlock> listPeer = mapChannelAndPeer.values().stream()
@@ -270,21 +261,24 @@ public class BasicManagerPeer implements ManagerPeer{
 
         for (PeerNonBlock peerNonBlock : listPeer) {
             if(!peerNonBlock.isConnected) continue;
-
             if(!peerNonBlock.hasHandshake) continue;
 
             // @todo colocar choked verify
             if(peerNonBlock.getPiecesMap() == null) continue;
 
-            if(!peerNonBlock.getSocketChannel().isOpen())continue;
-            if(!peerNonBlock.getSocketChannel().isBlocking())continue;
+            if(peerNonBlock.hasChoked()) continue;
 
-            List<MsgRequest> listMsgRequestForPeer = new ArrayList<>();
+            if(!peerNonBlock.getSocketChannel().isOpen())continue;
+            if(peerNonBlock.getSocketChannel().isBlocking())continue;
+
+            mapPeerAndMsgRequest.put(peerNonBlock, new ArrayList<MsgRequest>());
+
+            List<MsgRequest> listMsgRequestForPeer = mapPeerAndMsgRequest.get(peerNonBlock);
 
             for (int i = 0;
-                    i < listMsgRequest.size()
-                    &&
-                    listMsgRequestForPeer.size() < 3 ;
+                        i < listMsgRequest.size()
+                                &&
+                        listMsgRequestForPeer.size() < 2;
                     i++) {
                 MsgRequest request = listMsgRequest.get(i);
                 byte[] map = peerNonBlock.getPiecesMap().getMap();
@@ -294,29 +288,32 @@ public class BasicManagerPeer implements ManagerPeer{
                 }
 
             }
+
             listMsgRequest.removeAll(listMsgRequestForPeer);
 
-            mapPeerAndMsgRequest.put(peerNonBlock, listMsgRequestForPeer);
         }
 
         for (Entry<PeerNonBlock, List<MsgRequest>> entry : mapPeerAndMsgRequest.entrySet()) {
-            // send request for peer
-            // Map<SocketChannel, PeerNonBlock> mapChannelAndPeer.
-            // Selector selector
-            // code ????
+
             PeerNonBlock peerNonBlock = entry.getKey();
             List<MsgRequest> listMsgRequestForPeer = entry.getValue();
             SocketChannel socketChannel = peerNonBlock.getSocketChannel();
             try {
 
                 for(MsgRequest msg : listMsgRequestForPeer){
-                    peerNonBlock.writeMsg(msg);
-                    socketChannel.register(selector, SelectionKey.OP_READ);
+
+                    peerNonBlock.queueNewMsgIfNotExist(msg);
+					/*
+					PAREI AQUI!!!!!
+					if (peer.hasPendingMessages()) {
+                        SelectionKey key = peer.getChannel().keyFor(selector);
+                        key.interestOps(SelectionKey.OP_WRITE);
+                    }
+                    */
+                    // socketChannel.register(selector, SelectionKey.OP_WRITE);
                 }
 
-
-
-            }catch(IOException ex){
+            }catch(Exception ex){
                 ex.printStackTrace();
                 // @todo verificar mitigação
             }
@@ -326,14 +323,14 @@ public class BasicManagerPeer implements ManagerPeer{
     }
 
     // Process Pieces Recieve from peers
-    private void processRecieveMsgPiece(){
+    private void processReceiveMsgPiece(){
         while(!queueRecieveMsgPiece.isEmpty()){
             MsgPiece msg = queueRecieveMsgPiece.poll();
             managerFile.queueMsg(msg);
         }
     }
 
-    private void processRecieveMsgRequest(){
+    private void processReceiveMsgRequest(){
         // queueRecieveMsgRequest
         // verify piece exist in managerFile
         // see exist add queue for return picei

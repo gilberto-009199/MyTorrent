@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 import org.voyager.torrent.client.enums.ClientTorrentType;
@@ -13,12 +16,15 @@ import org.voyager.torrent.client.exceptions.NoReaderBufferException;
 import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.managers.ManagerPeer;
 import org.voyager.torrent.client.messages.*;
-import org.voyager.torrent.util.BinaryUtil;
+import org.voyager.torrent.client.metrics.PeerMetrics;
+import org.voyager.torrent.client.network.Network;
+import org.voyager.torrent.client.rate.BandWidthRate;
 
 public class PeerNonBlock implements Comparable<PeerNonBlock>{
 
-	// Info
+	// Config
 	private ClientTorrentType clientType;
+	private boolean verbouse = true;
 	private byte[] peerIdRemote;
 	private ManagerPeer client;
 	private byte[] infoHash;
@@ -26,25 +32,21 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 	private String host;
 	private int port;
 
-	// Data
+	// Data States
+	public boolean hasHandshake = false;
+	public boolean isConnected = false;
 	private boolean choked = true;
-	// Data Connection
-	public boolean isConnected = false; // CONNECT SOCKET
-	public boolean hasHandshake = false; // Connect Socket and shake Hands 
-	private SocketChannel socketChannel = null;
-
-	//	Data Pieces parts
 	private PiecesMap piecesMap;
 
-	// Data metrics peer
-	private int countMsgPieces		= 0;
-	private int countMsgRequest		= 0;
-	private int countMsgInterest	= 0;
-	private int countMsgNotInterest	= 0;
-	private int countMsgChoke		= 0;
-	private int countMsgUnChoke		= 0;
+	// Data Metrics
+	private PeerMetrics metrics;
+	// Data Network Rate and Channel
+	private BandWidthRate bandWidthRate;
+	private SocketChannel socketChannel = null;
+	private Network net = null;
 
-	private boolean verbouse = true;
+	// Data MsgWriter
+	private final Queue<Msg> queueMsg = new ConcurrentLinkedQueue<Msg>();
 
 	public PeerNonBlock() {}
 	public PeerNonBlock(String host, int port, byte[] peerId, ManagerPeer client) {
@@ -56,12 +58,87 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 		this.piecesMap = new PiecesMap(client.getTorrent());
 	}
 
+	public void queueNewMsgIfNotExist(MsgRequest msg) {
+		if(!queueMsg.contains(msg))queueNewMsg(msg);
+	}
+
+	public void queueNewMsg(Msg msg) {
+		queueMsg.add(msg);
+	}
+
+	public void processQueueNewMsg(){
+		// Processa todas as mensagens na fila
+		while (!queueMsg.isEmpty()) {
+			Msg msg = queueMsg.element();
+
+			try {
+
+				if(writeMsg(socketChannel, msg))queueMsg.poll();
+
+			} catch (IOException e) {
+				System.err.println(this + ":"+ msg +": Erro ao processar mensagem: "+ e.getMessage());
+				e.printStackTrace();
+			}
+
+		}
+	}
+
+	// write indepentet da menssagem
+	public boolean writeMsg(SocketChannel channel, Msg msg) throws IOException {
+
+		if(!channel.isOpen())return false;
+		if(channel.isBlocking())return false;
+
+		try {
+			byte[] packet = msg.toPacket();
+
+			// @todo mapear caso de packet > network rate byte por secound
+
+			// calc time
+			if(channel.isOpen() && !channel.isBlocking() && packetInRateNetwork(packet) ){
+
+				System.out.println("SEND: ["+ msg + "] to "+ this);
+
+				ByteBuffer buffer = ByteBuffer.wrap(packet);
+				channel.write(buffer);
+				buffer.clear();
+
+			} else return false;
+
+		}catch (Exception e){
+
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
+
+
+
+	private boolean packetInRateNetwork(byte[] packet) {
+		int packetSize = packet.length;
+
+		Instant now = Instant.now();
+		Duration timeElapsed = Duration.between(netLastSentTime, now);
+
+		if (timeElapsed.getSeconds() >= 1) {
+			netBytesSentInCurrentSecond = 0;
+			netLastSentTime = now;
+		}
+
+		if (netBytesSentInCurrentSecond + packetSize <= netBytesPerSecond) {
+			netBytesSentInCurrentSecond += packetSize;
+			return true;
+		}
+
+		return  false;
+	}
+
 	// MsgPiece
 	public void writeMsg(MsgPiece msg) throws IOException { writeMsg(socketChannel, msg); }
 	public void writeMsg(SocketChannel channel, MsgPiece msg) throws IOException {
 		ByteBuffer buffer = ByteBuffer.wrap(msg.toPacket());
 		channel.write(buffer);
-		//buffer.flip();
 		buffer.clear();
 	}
 
@@ -70,7 +147,6 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 	public void writeMsg(SocketChannel channel, MsgRequest msg) throws IOException {
 		ByteBuffer buffer = ByteBuffer.wrap(msg.toPacket());
 		channel.write(buffer);
-		//buffer.flip();
 		buffer.clear();
 	}
 
@@ -80,8 +156,6 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 		MsgHandShake msg = new MsgHandShake(this.infoHash, this.peerId);
 		ByteBuffer buffer = ByteBuffer.wrap(msg.toPacket());
 		channel.write(buffer);
-		// peerIdRemote
-		//buffer.flip();
 		buffer.clear();
 	}
 
@@ -108,31 +182,39 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 		if(!this.hasHandshake)throw new HandShakeInvalidException("Handshake Invalid");
 	}
 
-
 	public void readMsg(SocketChannel channel) throws IOException {
 
-        ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
-		
-        int bytesRead = channel.read(lengthBuffer);
+		if(!channel.isOpen())return;
+		if(channel.isBlocking())return;
+
+		// <4 bytes> for length, <1 byte> for ID message
+        ByteBuffer metadataBuffer = ByteBuffer.allocate(4);
+
+        int bytesRead = channel.read(metadataBuffer);
         if (bytesRead == -1) {
             throw new ConnectException("fechar coneção");
         }else if(bytesRead < 4){
-			// @todo remover isso, quando encotnrar a jornada correta
-			System.out.println("sem length");
-			throw new NoReaderBufferException("Sem Length no packet");
+			// @todo remover isso, quando encontrar a jornada correta
+			System.out.println("No packet");
+			throw new NoReaderBufferException("No packet");
 		}
 
-		lengthBuffer.flip();
-        int length = lengthBuffer.getInt();
+
+		metadataBuffer.flip();
+
+        int length = metadataBuffer.getInt();
+
+
+
 
         if (length == 0) {
             System.out.println("menssagem de Keep a Live");
             return;
-        }
+		}
 
-		ByteBuffer messageBuffer = ByteBuffer.allocate(length);
-		
-		bytesRead = channel.read(messageBuffer);
+		ByteBuffer contentBuffer = ByteBuffer.allocate(length);
+
+		bytesRead = channel.read(contentBuffer);
 
 		if (bytesRead == -1) {
 			System.out.println("Connection closed by peer while reading message.");
@@ -140,9 +222,10 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 			return;
 		}
 
-		// Garante que a mensagem foi lida completamente
-		while (messageBuffer.hasRemaining()) {
-			bytesRead = channel.read(messageBuffer);
+
+		// garante leitura completa
+		while (contentBuffer.hasRemaining()) {
+			bytesRead = channel.read(contentBuffer);
 			if (bytesRead == -1) {
 				System.out.println("Connection closed by peer while reading message.");
 				channel.close();
@@ -150,14 +233,17 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 			}
 		}
 
-		messageBuffer.flip();
+		contentBuffer.flip();
 
-		byte[] buff = new byte[messageBuffer.remaining()];
-		messageBuffer.get(buff);
+		byte id = contentBuffer.get();
 
-		byte state = buff[0];
+		System.out.println("Receive: [len: "+ length +", id: "+ id +"] from "+ this);
 
-		switch (state) {
+		processMsg(id, contentBuffer);
+	}
+
+	public void processMsg(byte id, ByteBuffer contentMessage){
+		switch (id) {
 			case MsgChoke.ID:
 				if(verbouse)System.out.println("  Receive MsgChoke "+ this);
 				if(verbouse)System.out.println("\t  Informa ao peer que ele foi bloqueado. Isso significa que o peer não poderá solicitar peças do arquivo.");
@@ -192,23 +278,25 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 			case MsgBitfield.ID:
 				if(verbouse)System.out.println("  Receive MsgBitfield "+ this);
 				if(verbouse)System.out.println("\t  Envia um mapa de bits que representa todas as peças que o peer possui. É usado logo no início da conexão para informar o estado atual do peer.");
-				if(verbouse)System.out.println("\t Mapa Pices:"+ new PiecesMap(buff, piecesMap.getSizePiece()));
 
-				this.piecesMap = new PiecesMap(buff, buff.length);
+				processMsgBitfield(contentMessage);
+
 				break;
 			case MsgRequest.ID:
 				if(verbouse)System.out.println("  Receive MsgRequest "+ this);
 				if(verbouse)System.out.println("\t  Solicita uma peça específica do arquivo. Contém informações como o índice da peça e o deslocamento dentro dela.");
 
 				countMsgRequest++;
-				processMsgRequest(buff);
+				processMsgRequest(contentMessage);
+
 				break;
 			case MsgPiece.ID:
 				if(verbouse)System.out.println("  Receive MsgPiece "+ this);
 				if(verbouse)System.out.println("\t  Transfere um pedaço de uma peça solicitada para o peer que fez o pedido. Contém os dados reais do arquivo.");
 
 				countMsgPieces++;
-				processMsgPiece(buff);
+				processMsgPiece(contentMessage);
+
 				break;
 			case MsgCancel.ID:
 				if(verbouse)System.out.println("  Receive MsgCancel "+ this);
@@ -221,23 +309,28 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 
 				break;
 			default:
-				System.out.printf("### Error message state: %d%n ###", (int) state);
-				System.out.write(buff, 0, Math.min(buff.length, 100));
+				System.out.printf("### Error message state: %d%n ###", (int) id);
+				System.out.write(contentMessage.array(), 0, Math.min(contentMessage.capacity(), 100));
 				System.out.println("\n### Final unknown message. ###");
 		}
-
 	}
 
+	private void processMsgBitfield(ByteBuffer contentMessage) { processMsgBitfield(contentMessage.array());}
+	private void processMsgBitfield(byte[] buff) {
+		this.piecesMap = new PiecesMap(buff, buff.length);
+	}
+
+	public void processMsgRequest(ByteBuffer contentMessage){	processMsgRequest(contentMessage.array());}
 	public void processMsgRequest(byte[] buff){
 		MsgRequest msg = new MsgRequest(buff);
 		this.client.queueNewMsg(this, msg);
 	}
 
-	public void processMsgPiece(byte[] buff){
-		MsgPiece msg = new MsgPiece(buff);
+	public void processMsgPiece(ByteBuffer contentMessage){	processMsgPiece(contentMessage.array()); }
+	public void processMsgPiece(byte[] buffer){
+		MsgPiece msg = new MsgPiece(buffer);
 		this.client.queueNewMsg(this, msg);
 	}
-
 
     @Override
     public boolean equals(Object obj) {
@@ -347,4 +440,6 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 	public String toString() {
 		return "PeerNonBlock[host: "+this.host+", port: "+this.port+", connect: "+this.isConnected+", hasHandshake: "+ this.hasHandshake + ", clientType: "+ this.clientType +", Map: "+ this.piecesMap+"]";
 	}
+
+
 }
