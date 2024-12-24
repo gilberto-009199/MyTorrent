@@ -1,12 +1,13 @@
 package org.voyager.torrent.client.network;
 
+import org.voyager.torrent.client.messages.Msg;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 
-public class SocketNetwork implements Network{
+public class SocketNetwork implements Network {
 
 	private Socket socket;
 	private InputStream in;
@@ -20,12 +21,12 @@ public class SocketNetwork implements Network{
 
 	@Override
 	public boolean isRedable() {
-		return socket != null && socket.isConnected() && !socket.isInputShutdown();
+		return socket != null && !socket.isClosed() && socket.isConnected();
 	}
 
 	@Override
 	public boolean isWritable() {
-		return socket != null && socket.isConnected() && !socket.isOutputShutdown();
+		return socket != null && !socket.isClosed() && socket.isConnected();
 	}
 
 	@Override
@@ -34,21 +35,27 @@ public class SocketNetwork implements Network{
 	}
 
 	@Override
-	public int write(ByteBuffer[] buffers) throws IOException {
+	public int write(Msg msg) throws IOException {
 		if (!isWritable()) {
 			throw new IOException("Socket is not writable or not connected.");
 		}
-		int totalBytesWritten = 0;
-		for (ByteBuffer buffer : buffers) {
-			while (buffer.hasRemaining()) {
-				byte[] data = new byte[buffer.remaining()];
-				buffer.get(data);
-				out.write(data);
-				totalBytesWritten += data.length;
-			}
-		}
+		byte[] data = msg.toPacket();
+		out.write(data);
 		out.flush();
-		return totalBytesWritten;
+		return data.length;
+	}
+
+	@Override
+	public int write(ByteBuffer buffer) throws IOException {
+		if (!isWritable()) {
+			throw new IOException("Socket is not writable or not connected.");
+		}
+		int length = buffer.remaining();
+		byte[] data = new byte[length];
+		buffer.get(data);
+		out.write(data);
+		out.flush();
+		return length;
 	}
 
 	@Override
@@ -62,22 +69,18 @@ public class SocketNetwork implements Network{
 	}
 
 	@Override
-	public int read(ByteBuffer[] buffers) throws IOException {
+	public int read(ByteBuffer buffer) throws IOException {
 		if (!isRedable()) {
 			throw new IOException("Socket is not readable or not connected.");
 		}
-		int totalBytesRead = 0;
-		for (ByteBuffer buffer : buffers) {
-			byte[] data = new byte[buffer.remaining()];
-			int bytesRead = in.read(data);
-			if (bytesRead == -1) {
-				closeConnection();
-				return -1;
-			}
-			buffer.put(data, 0, bytesRead);
-			totalBytesRead += bytesRead;
+		byte[] data = new byte[buffer.remaining()];
+		int bytesRead = in.read(data);
+		if (bytesRead == -1) {
+			closeConnection();
+			return -1;
 		}
-		return totalBytesRead;
+		buffer.put(data, 0, bytesRead);
+		return bytesRead;
 	}
 
 	@Override
@@ -97,12 +100,32 @@ public class SocketNetwork implements Network{
 		if (!isRedable()) {
 			throw new IOException("Socket is not readable or not connected.");
 		}
-		byte[] buffer = new byte[bytes];
-		int bytesRead = in.read(buffer);
+		byte[] data = new byte[bytes];
+		int bytesRead = in.read(data);
 		if (bytesRead == -1) {
 			closeConnection();
+			return -1;
 		}
 		return bytesRead;
+	}
+
+	@Override
+	public int readFull(ByteBuffer contentBuffer) throws IOException {
+		if (!isRedable()) {
+			throw new IOException("Socket is not readable or not connected.");
+		}
+		int totalBytesRead = 0;
+		while (contentBuffer.hasRemaining()) {
+			byte[] chunk = new byte[contentBuffer.remaining()];
+			int bytesRead = in.read(chunk);
+			if (bytesRead == -1) {
+				closeConnection();
+				return -1;
+			}
+			contentBuffer.put(chunk, 0, bytesRead);
+			totalBytesRead += bytesRead;
+		}
+		return totalBytesRead;
 	}
 
 	private void closeConnection() throws IOException {

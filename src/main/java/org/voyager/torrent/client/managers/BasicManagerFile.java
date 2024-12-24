@@ -26,7 +26,6 @@ public class BasicManagerFile implements ManagerFile{
     private ManagerPeer managerPeer;
     private Semaphore semaphoreExecutor;
     private ManagerAnnounce managerAnnounce;
-
     private Queue<MsgPiece> queueRecieveMsgPiece;
 
     private RandomAccessFile randomAccessFile;
@@ -65,71 +64,42 @@ public class BasicManagerFile implements ManagerFile{
         }
     }
 
-    private void initFileSystem() {
-
-        String home = System.getProperty("user.home");
-
-        // Constrói o caminho do diretório de download usando Paths
-        String dirName = Base64.getEncoder().encodeToString(torrent.getInfoHash());
-        Path dirDownload = Paths.get(home, dirName);
-
-        // Exibe o caminho final para validação (opcional)
-        System.out.println("Dir: " + dirDownload);
-
-        FileUtil.createDirectoryIfNotExist(dirDownload.toString());
-
-        // create file and sabe
-        Path file = Paths.get(dirDownload.toString(), torrent.getFileName());
-        randomAccessFile = FileUtil.createFileEmptyIfNotExist( torrent.getFileLength(), file.toFile());
-
-        verifyFileSystem();
-    }
-
-    private void verifyFileSystem(){
-
-        try{
-            lockMap.lock();
-
-            List<byte[]> listPieceHashes = torrent.getListPieceHashes();
-            byte[] binaryMap = map.getMap();
-
-            int pieceLength = binaryMap.length;
-            long fileLength = torrent.getFileLength();
-
-            for(int i = 0; i < binaryMap.length; i++) {
-                byte[] sha = listPieceHashes.get(i);
-                boolean valid = FileTorrentUtil.verify(i, sha, randomAccessFile, pieceLength, fileLength);
-                binaryMap[i] = (byte) (valid ? 1 : 0);
-            }
-
-            map = new PiecesMap(binaryMap, pieceLength);
-
-        }finally {
-            lockMap.unlock();
-        }
-
-    }
 
     private void process(){
         // process MsgPices recieve in My Queue 
         processRecieveMsgPiece();
         // verify blocks hashes
-
+        // recalcMap and MsgRequest
     }
 
     private void processRecieveMsgPiece() {
         lockMap.lock();
         try {
-            
-            //  interar block in MsgPiece
-            //      save file    
-            //      clear MsgPiece block 
-            //      manteined begin, end , position in MsgPiece
-            System.err.println("BasicManagerFile.processRecieveMsgPiece() Fila Pieces: "+ queueRecieveMsgPiece.size());
-            // recalc Map
 
-        } catch (Exception e) {}
-         finally{
+            while(!queueRecieveMsgPiece.isEmpty()){
+
+                MsgPiece piece = queueRecieveMsgPiece.poll();
+
+                int offset = piece.getPosition() * map.getSizePiece();
+                int begin = piece.getBegin();
+
+                // save file in ramdom file
+                randomAccessFile.seek(offset + begin);
+                randomAccessFile.write(piece.getBlock());
+
+                System.out.println("Piece: "+ piece);
+                System.out.println(" offset: "+ offset);
+                System.out.println(" begin: "+ begin);
+                System.out.println(" begin+offset: "+ begin+offset);
+                System.out.println("\n\tCONTENT:\n\n");
+                System.out.write(piece.getBlock());
+                System.out.println("\n\tFINAL CONTENT\n\n");
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
             lockMap.unlock();
         }
     }
@@ -187,6 +157,53 @@ public class BasicManagerFile implements ManagerFile{
         return listMsgRequests;
     }
 
+
+    private void initFileSystem() {
+
+        String home = System.getProperty("user.home");
+
+        // Constrói o caminho do diretório de download usando Paths
+        String dirName = Base64.getEncoder().encodeToString(torrent.getInfoHash());
+        Path dirDownload = Paths.get(home, dirName);
+
+        // Exibe o caminho final para validação (opcional)
+        System.out.println("Dir: " + dirDownload);
+
+        FileUtil.createDirectoryIfNotExist(dirDownload.toString());
+
+        // create file and sabe
+        Path file = Paths.get(dirDownload.toString(), torrent.getFileName());
+        randomAccessFile = FileUtil.createFileEmptyIfNotExist( torrent.getFileLength(), file.toFile());
+
+        verifyFileSystem();
+    }
+
+    private void verifyFileSystem(){
+
+        try{
+            lockMap.lock();
+
+            List<byte[]> listPieceHashes = torrent.getListPieceHashes();
+            byte[] binaryMap = map.getMap();
+
+            int pieceLength = binaryMap.length;
+            long fileLength = torrent.getFileLength();
+            int sizePiece = (int) Math.ceil((double) fileLength / pieceLength);
+
+            for(int i = 0; i < binaryMap.length; i++) {
+                byte[] sha = listPieceHashes.get(i);
+                boolean valid = FileTorrentUtil.verify(i, sha, randomAccessFile, pieceLength, fileLength);
+                binaryMap[i] = (byte) (valid ? 1 : 0);
+            }
+            // corrija isso
+            map = new PiecesMap(binaryMap, sizePiece);
+
+        }finally {
+            lockMap.unlock();
+        }
+
+    }
+
     public void queueMsg(MsgPiece msg){
         lockMap.lock();
 
@@ -197,8 +214,15 @@ public class BasicManagerFile implements ManagerFile{
         }
     }
 
+
     private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
     private boolean isInterrupted(){ return Thread.currentThread().isInterrupted(); }
+
+    public PiecesMap getMap() { return map;  }
+    public void setMap(PiecesMap map) { this.map = map; }
+
+    public Torrent getTorrent() { return torrent; }
+    public void setTorrent(Torrent torrent) { this.torrent = torrent; }
 
     @Override
     public ManagerFile withManagerPeer(ManagerPeer managerPeer) {

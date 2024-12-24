@@ -1,6 +1,7 @@
 package org.voyager.torrent.client.files;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStore.Entry;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -33,7 +34,7 @@ public class Torrent {
 
     public Map<String, String> genAnnounceParameters(){
 
-        if(this.peerId == null)this.peerId =  BinaryUtil.genBinaryArray(20);
+        if(this.peerId == null)this.peerId =  "-TR0072-8vd6hrmp04an".getBytes(StandardCharsets.UTF_8); //BinaryUtil.genBinaryArray(20);
         
         int port        = -1,
             uploaded    = 0,

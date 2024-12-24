@@ -39,13 +39,13 @@ public class MsgRequest implements Msg{
             packet[index++] << 8    +
             packet[index++]
         );
+
         this.begin = (
             packet[index++] << 24   +
             packet[index++] << 16   +
             packet[index++] << 8    +
             packet[index++]
         );
-        
 
         this.length = (
             packet[index++] << 24   +
@@ -56,7 +56,7 @@ public class MsgRequest implements Msg{
         
     }
 
-    public int length(){
+	public int length(){
         // <4 Byte Length><1 Bytes ID><4 Bytes position><4 Bytes begin><4 Bytes length>
         return 4 + 1 + 4 + 4 + 4;
     }

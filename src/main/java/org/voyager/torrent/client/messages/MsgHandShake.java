@@ -4,6 +4,7 @@ import org.voyager.torrent.client.enums.ClientTorrentType;
 import org.voyager.torrent.client.exceptions.HandShakeInvalidException;
 import org.voyager.torrent.util.BinaryUtil;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -27,7 +28,8 @@ import java.util.Arrays;
 */
 public class MsgHandShake implements Msg{
 
-	public static final byte[]	PROTOCOL			= BinaryUtil.stringToByteBuffer("BitTorrent protocol").array();
+	public static final byte[] PROTOCOL	= BinaryUtil.stringToByteBuffer("BitTorrent protocol").array();
+	public static final int ID 			= 66;
 
 	private ClientTorrentType clientType;
 	private byte[] extension;
@@ -59,7 +61,13 @@ public class MsgHandShake implements Msg{
 		index += 19;
 
 		// Verificar se o protocolo é válido
-		if (!Arrays.equals(this.protocol, PROTOCOL)) throw new RuntimeException("Invalid protocol identifier.");
+
+		if (!Arrays.equals(this.protocol, PROTOCOL)){
+			try {
+				System.out.write(protocol);
+			} catch (IOException e) {}
+			throw new RuntimeException(" Error Invalid protocol identifier: "+ new String(packet, StandardCharsets.US_ASCII));
+		}
 
 		// <extension> 8 bytes
 		this.extension = new byte[8];
@@ -138,7 +146,7 @@ public class MsgHandShake implements Msg{
 	public void setPeerId(byte[] peerId) { this.peerId = peerId; }
 
 	@Override
-	public int getID(){ return 0; }
+	public int getID(){ return ID; }
 
 
 	public boolean equals(Object obj) {

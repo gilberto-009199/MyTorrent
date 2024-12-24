@@ -12,7 +12,7 @@ public class PiecesMap {
 
     public PiecesMap(Torrent torrent){ 
         this.map            = new byte[(torrent.getListPieceHashes().size() / 8) + 1];
-        this.sizePiece      = torrent.getPieceLength();
+        this.sizePiece      = torrent.getPieceLength() / map.length;
     }
 
     public PiecesMap(TorrentInfo torrent){ 
@@ -26,14 +26,14 @@ public class PiecesMap {
         this.sizePiece  = torrent.piece_length;
     }
 
-    public PiecesMap(int countPieces, int pieceLength){ 
+    public PiecesMap(int countPieces, int sizePiece){
         this.map = new byte[countPieces];
-        this.sizePiece = pieceLength;
+        this.sizePiece = sizePiece;
     }
 
-    public PiecesMap(byte[] map, int pieceLength){  
+    public PiecesMap(byte[] map, int sizePiece){
         this.map = map;
-        this.sizePiece = pieceLength;
+        this.sizePiece = sizePiece;
     }
 
     // Data func
