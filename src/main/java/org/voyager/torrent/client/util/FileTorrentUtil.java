@@ -4,6 +4,9 @@ import java.io.RandomAccessFile;
 import java.security.MessageDigest;
 
 public class FileTorrentUtil {
+
+
+
 	/**
 	 * Verifica a integridade de uma peça de arquivo com base no índice e no hash SHA-1 esperado.
 	 *

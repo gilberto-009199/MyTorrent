@@ -35,10 +35,10 @@ public class ClientTorrent{
 	private Thread thrManagerPeer;
 
 	// @todo add config for parameters or Builder
-	public ClientTorrent(String torrentFile){ torrent = Torrent.of(torrentFile);}
-	public ClientTorrent(String torrentFile, boolean verbouse){ 
-		this.verbouse = verbouse; 
-		torrent = Torrent.of(torrentFile);
+	public ClientTorrent(String torrentFile){ this.torrent = Torrent.of(torrentFile);}
+	public ClientTorrent(String torrentFile, boolean verbouse){
+		this(torrentFile);
+		this.verbouse = verbouse;
 	}
 	
 	// @todo add mode simple, server, consumer, seeding
@@ -63,9 +63,7 @@ public class ClientTorrent{
 
         managerPeer.withSemaphoreExecutor(semaphoreExecutor)
 				   .withManagerAnnounce(managerAnnounce)
-                   .withManagerFile(managerFile)
-                   .withMaxUploaderPeerSecond(maxUploaderPeerSecond)
-                   .withMaxDownloaderPeerSecond(maxDownloaderPeerSecond);
+                   .withManagerFile(managerFile);
 
         managerFile.withSemaphoreExecutor(semaphoreExecutor)
 				   .withManagerPeer(managerPeer)

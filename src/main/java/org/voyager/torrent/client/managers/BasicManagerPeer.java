@@ -14,6 +14,8 @@ import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.messages.MsgBitfield;
+import org.voyager.torrent.client.network.ChannelNetwork;
 import org.voyager.torrent.client.peers.Peer;
 import org.voyager.torrent.client.peers.PeerNonBlock;
 import org.voyager.torrent.client.exceptions.HandShakeInvalidException;
@@ -29,9 +31,6 @@ public class BasicManagerPeer implements ManagerPeer{
     private ManagerFile managerFile;
     private Semaphore semaphoreExecutor;
     private ManagerAnnounce managerAnnounce;
-
-    private int maxUploaderPeerSecond = -1;
-	private int maxDownloaderPeerSecond = -1;
 
     // IO non-blocker
     private Selector selector;
@@ -74,7 +73,8 @@ public class BasicManagerPeer implements ManagerPeer{
             }
 
             System.out.println("-------- ManagerPeer -------");
-            sleep(80);
+            // sleep calc pela menor latencia dentro dos pares
+            sleep(128);
         }
 
     }
@@ -123,10 +123,6 @@ public class BasicManagerPeer implements ManagerPeer{
 
     // Hook Selector handler for handling completed connections
     public void handlerConnect(SelectionKey key) {
-        // Este método é chamado quando um canal cliente completa a conexão com um servidor.
-        // - Verifica se a conexão foi estabelecida com sucesso.
-        // - Pode enviar uma mensagem inicial (como um handshake) para estabelecer a comunicação.
-        // - Atualiza o estado do Peer associado ao canal.
 
         SocketChannel channel = (SocketChannel) key.channel();
         PeerNonBlock peer = mapChannelAndPeer.get(channel);
@@ -151,36 +147,27 @@ public class BasicManagerPeer implements ManagerPeer{
         } catch (IOException e) {
             System.err.println("Erro na conexão ou handshake: \t"+ e.getMessage());
             closeChannel(channel);
+            mapChannelAndPeer.remove(channel);
             key.cancel();
+
         }
     }
 
     // Hook Selector handler for reading from channels
     public void handlerRead(SelectionKey key) throws IOException{
-        // Este método é chamado quando há dados disponíveis para leitura no canal.
-        // - Lê os dados do canal no buffer associado.
-        // - Passa o controle para o Peer associado para processar a mensagem recebida.
-        // - Pode incluir lógica para lidar com fragmentação ou mensagens parciais.
-
         SocketChannel channel = (SocketChannel) key.channel();
         PeerNonBlock peer = mapChannelAndPeer.get(channel);
 
-        if(!channel.isOpen())return;
-        if(channel.isBlocking())return;
+        boolean isReadable = channel.isConnected() && channel.isOpen();
+        boolean notIsReadableThen = !isReadable;
+        if(notIsReadableThen)return;
 
         System.out.println("handlerRead: "+ peer);
 
         try {
-            
-            if(peer.isConnected() && !peer.hasHandshake()){
 
-                peer.readShake(channel);
-                
-
-            } else {
-
-                peer.readMsg(channel);
-
+            if(peer.isConnected()){
+                peer.readMsg();
             }
 
             key.interestOps(SelectionKey.OP_WRITE);
@@ -189,22 +176,17 @@ public class BasicManagerPeer implements ManagerPeer{
             System.err.println("Erro durante leitura do peer: " + peer);
             e.printStackTrace();
         } catch (ConnectException e){
-            System.err.println("ConnectException: " + peer);
+          // retry connection
             closeChannel(channel);
+            mapChannelAndPeer.remove(channel);
             key.cancel();
-        } catch (HandShakeInvalidException e) {
+        } catch(HandShakeInvalidException | IOException e) {
             System.err.println("Erro durante leitura do peer: " + peer);
 
             e.printStackTrace();
 
             closeChannel(channel);
-            key.cancel();
-        } catch (IOException e) {
-            System.err.println("Erro durante leitura do peer: " + peer);
-
-            e.printStackTrace();
-
-            closeChannel(channel);
+            mapChannelAndPeer.remove(channel);
             key.cancel();
         }
        
@@ -212,22 +194,19 @@ public class BasicManagerPeer implements ManagerPeer{
 
     // Hook Selector handler for writing to channels
     public void handlerWrite(SelectionKey key) {
-        // Este método é chamado quando o canal está pronto para escrita.
-        // - Recupera dados que precisam ser enviados para o canal (geralmente de uma fila de mensagens do Peer).
-        // - Escreve os dados no canal usando buffers.
-        // - Pode alternar o interesse do canal para evitar ciclos contínuos de escrita.
-
         SocketChannel channel = (SocketChannel) key.channel();
         PeerNonBlock peer = mapChannelAndPeer.get(channel);
 
-        if(!channel.isOpen())return;
+        boolean isWritable = channel.isConnected() && channel.isOpen();
+        boolean notIsWritableThen = !isWritable;
+        if(notIsWritableThen)return;
 
         System.out.println("handlerWrite: "+ peer);
 
         try {
             
             if(peer.isConnected() && !peer.hasHandshake()){
-                peer.writeShake(channel);
+                peer.writeShake();
             }
             if(peer.hasHandshake() && !peer.hasChoked()){
                 peer.processQueueNewMsg();
@@ -241,18 +220,16 @@ public class BasicManagerPeer implements ManagerPeer{
             e.printStackTrace();
 
             closeChannel(channel);
+            mapChannelAndPeer.remove(channel);
             key.cancel();
         }
     }
 
     // Process send Request Pieces in peer
     private void processSendMsgRequest(){
-        // @todo  add time entry request 500ms
-
         List<MsgRequest> listMsgRequest = managerFile.calcMsgRequest();
 
-        // priorite peers for sort 
-        // process send Request for peers contained Piece and retrict max bytes request for peer
+        //  peers for sort metrics
         List<PeerNonBlock> listPeer = mapChannelAndPeer.values().stream()
                                                                 .sorted(Collections.reverseOrder())
                                                                 .collect(Collectors.toList());
@@ -265,21 +242,12 @@ public class BasicManagerPeer implements ManagerPeer{
 
             // @todo colocar choked verify
             if(peerNonBlock.getPiecesMap() == null) continue;
-
             if(peerNonBlock.hasChoked()) continue;
 
-            if(!peerNonBlock.getSocketChannel().isOpen())continue;
-            if(peerNonBlock.getSocketChannel().isBlocking())continue;
-
             mapPeerAndMsgRequest.put(peerNonBlock, new ArrayList<MsgRequest>());
-
             List<MsgRequest> listMsgRequestForPeer = mapPeerAndMsgRequest.get(peerNonBlock);
 
-            for (int i = 0;
-                        i < listMsgRequest.size()
-                                &&
-                        listMsgRequestForPeer.size() < 2;
-                    i++) {
+            for(int i = 0; i < listMsgRequest.size(); i++){
                 MsgRequest request = listMsgRequest.get(i);
                 byte[] map = peerNonBlock.getPiecesMap().getMap();
 
@@ -288,37 +256,17 @@ public class BasicManagerPeer implements ManagerPeer{
                 }
 
             }
-
             listMsgRequest.removeAll(listMsgRequestForPeer);
-
         }
 
+        // add queue peer
         for (Entry<PeerNonBlock, List<MsgRequest>> entry : mapPeerAndMsgRequest.entrySet()) {
-
             PeerNonBlock peerNonBlock = entry.getKey();
             List<MsgRequest> listMsgRequestForPeer = entry.getValue();
-            SocketChannel socketChannel = peerNonBlock.getSocketChannel();
-            try {
 
-                for(MsgRequest msg : listMsgRequestForPeer){
-
-                    peerNonBlock.queueNewMsgIfNotExist(msg);
-					/*
-					PAREI AQUI!!!!!
-					if (peer.hasPendingMessages()) {
-                        SelectionKey key = peer.getChannel().keyFor(selector);
-                        key.interestOps(SelectionKey.OP_WRITE);
-                    }
-                    */
-                    // socketChannel.register(selector, SelectionKey.OP_WRITE);
-                }
-
-            }catch(Exception ex){
-                ex.printStackTrace();
-                // @todo verificar mitigação
+            for(MsgRequest msg : listMsgRequestForPeer){
+               peerNonBlock.queueNewMsgIfNotExist(msg);
             }
-
-
         }
     }
 
@@ -334,15 +282,8 @@ public class BasicManagerPeer implements ManagerPeer{
         // queueRecieveMsgRequest
         // verify piece exist in managerFile
         // see exist add queue for return picei
-
     }
 
-    private void closeChannel(SocketChannel channel) {
-        try { channel.close(); }
-        catch (IOException e) {
-            System.err.println("Erro ao fechar canal: " + e.getMessage());
-        }
-    }
 
     // Process Queue
     private void processQueueNewsPeer(){
@@ -356,16 +297,16 @@ public class BasicManagerPeer implements ManagerPeer{
                 channel.configureBlocking(false);
                 channel.connect(new InetSocketAddress(peer.getHost(), peer.getPort()));
                 
-                // 30s de inatividade
+                // 30s for connect and keep-alive
                 channel.socket().setSoTimeout(30000);
-
                 channel.register(selector, SelectionKey.OP_CONNECT);
 
-                peer.setSocketChannel(channel);
+                peer.withNetwork( new ChannelNetwork(channel) )
+                    .withManagerPeer(this);
 
                 mapChannelAndPeer.put(channel, peer);
     
-                System.out.println("Peer registrado: " + peer);
+                System.out.println("Peer registry: " + peer);
     
             } catch (IOException e) {
                 System.err.println("Erro ao registrar peer: " + peer);
@@ -384,14 +325,9 @@ public class BasicManagerPeer implements ManagerPeer{
 
     //  Queue New Msg from Peers
     @Override
-    public void queueNewMsg(PeerNonBlock peer, MsgRequest msg) {
-        queueRecieveMsgRequest.add(msg);
-    }
-
+    public void queueNewMsg(PeerNonBlock peer, MsgRequest msg) { queueRecieveMsgRequest.add(msg); }
     @Override
-    public void queueNewMsg(PeerNonBlock peer, MsgPiece msg) {
-        queueRecieveMsgPiece.add(msg);
-    }
+    public void queueNewMsg(PeerNonBlock peer, MsgPiece msg) { queueRecieveMsgPiece.add(msg); }
 
     // Util selector
     // @todo Mitigar
@@ -403,6 +339,13 @@ public class BasicManagerPeer implements ManagerPeer{
         try{ selector = Selector.open(); }catch(Exception e){e.printStackTrace();}
     }
 
+    private void closeChannel(SocketChannel channel) {
+        try { channel.close(); }
+        catch (IOException e) {
+            System.err.println("Erro ao fechar canal: " + e.getMessage());
+        }
+    }
+
     private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
     private boolean isInterrupted(){ return Thread.currentThread().isInterrupted(); }
 
@@ -412,17 +355,6 @@ public class BasicManagerPeer implements ManagerPeer{
         return this;
     }
 
-    @Override
-    public ManagerPeer withMaxUploaderPeerSecond(int maxUploaderPeerSecond) {
-        this.maxUploaderPeerSecond = maxUploaderPeerSecond;
-        return this;
-    }
-
-    @Override
-    public ManagerPeer withMaxDownloaderPeerSecond(int maxDownloaderPeerSecond) {
-        this.maxDownloaderPeerSecond = maxDownloaderPeerSecond;
-        return this;
-    }
 
     @Override
     public Torrent getTorrent() { return this.torrent; }
@@ -463,6 +395,8 @@ public class BasicManagerPeer implements ManagerPeer{
         throw new UnsupportedOperationException("Unimplemented method 'removeInterestPeer'");
     }
 
+    @Override
+    public ManagerFile getManagerFile() { return this.managerFile;  }
     @Override
     public ManagerPeer withManagerFile(ManagerFile managerFile) {
         this.managerFile = managerFile;

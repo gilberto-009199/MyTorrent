@@ -1,19 +1,22 @@
-package org.voyager.torrent.client.rate;
+package org.voyager.torrent.client.limits;
+
+import org.voyager.torrent.client.messages.Msg;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class BandWidthRate {
+public class BandWidthLimit {
 
 	public long maxBytesPerSecond;
 	public AtomicLong currentBytes;
 	public volatile long lastResetTime;
 
-	public BandWidthRate(long maxBytesPerSecond) {
+	public BandWidthLimit(long maxBytesPerSecond) {
 		this.maxBytesPerSecond = maxBytesPerSecond;
 		this.currentBytes = new AtomicLong(0);
 		this.lastResetTime = System.currentTimeMillis();
 	}
 
+	public synchronized boolean tryConsume(Msg msg) { return  tryConsume(msg.length()); }
 	public synchronized boolean tryConsume(long bytes) {
 		long now = System.currentTimeMillis();
 

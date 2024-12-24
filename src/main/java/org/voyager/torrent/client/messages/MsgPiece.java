@@ -22,6 +22,7 @@ public class MsgPiece implements Msg{
     private byte[] block;
 
     //	<len=0009+X><id=7><index|position><begin><block>
+    public MsgPiece(){}
     public MsgPiece(int position, int begin, byte[] block){
         this.position = position;
         this.begin = begin;
@@ -47,12 +48,15 @@ public class MsgPiece implements Msg{
             packet[index++] << 8    +
             packet[index++]
         );
-        
+
         this.block = new byte[packet.length - index];
+
         this.end = begin + block.length;
+
         System.arraycopy(packet, index, block, 0, block.length);
         
     }
+
     public int length(){
         // <4 Byte Length><1 Bytes ID><4 Bytes position><4 Bytes begin><X Bytes block>
         return 4 + 1 + 4 + 4 + block.length;
@@ -136,4 +140,5 @@ public class MsgPiece implements Msg{
         //	<len=0009+X><id=7><index><begin><block>
         return "MsgPiece[position: "+ position +", begin: "+ begin+", end: "+ end +", block: [length: "+ (begin - end) +"]]";
     }
+
 }
