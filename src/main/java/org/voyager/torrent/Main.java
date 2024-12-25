@@ -10,7 +10,6 @@ public class Main {
 		//ClientTorrent mytorrent = new ClientTorrent("debian_jesse8.torrent", true);
 		ClientTorrent mytorrent = new ClientTorrent("debian_bookworm12.torrent");
 		mytorrent.start();
-		
 	}
 
 }

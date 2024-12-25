@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 import org.voyager.torrent.client.ClientTorrent;
 import org.voyager.torrent.client.messages.MsgBitfield;
+import org.voyager.torrent.client.messages.MsgCancel;
 import org.voyager.torrent.client.network.ChannelNetwork;
 import org.voyager.torrent.client.peers.Peer;
 import org.voyager.torrent.client.peers.PeerNonBlock;
@@ -227,14 +228,16 @@ public class BasicManagerPeer implements ManagerPeer{
 
     // Process send Request Pieces in peer
     private void processSendMsgRequest(){
-        List<MsgRequest> listMsgRequest = managerFile.calcMsgRequest();
+
+        List<MsgRequest> listMsgRequest = managerFile.msgRequest();
 
         //  peers for sort metrics
         List<PeerNonBlock> listPeer = mapChannelAndPeer.values().stream()
                                                                 .sorted(Collections.reverseOrder())
                                                                 .collect(Collectors.toList());
 
-        Map<PeerNonBlock, List<MsgRequest>> mapPeerAndMsgRequest = new HashMap<>();
+
+        List<MsgRequest> listMsgRequestInPeer = new ArrayList<>();
 
         for (PeerNonBlock peerNonBlock : listPeer) {
             if(!peerNonBlock.isConnected) continue;
@@ -244,30 +247,23 @@ public class BasicManagerPeer implements ManagerPeer{
             if(peerNonBlock.getPiecesMap() == null) continue;
             if(peerNonBlock.hasChoked()) continue;
 
-            mapPeerAndMsgRequest.put(peerNonBlock, new ArrayList<MsgRequest>());
-            List<MsgRequest> listMsgRequestForPeer = mapPeerAndMsgRequest.get(peerNonBlock);
 
             for(int i = 0; i < listMsgRequest.size(); i++){
                 MsgRequest request = listMsgRequest.get(i);
+
+                if(listMsgRequestInPeer.contains(request))continue;
+
                 byte[] map = peerNonBlock.getPiecesMap().getMap();
 
                 if(map.length >= request.getPosition() && map[request.getPosition()] != 0){
-                    listMsgRequestForPeer.add(request);
+
+                    peerNonBlock.queueNewMsgIfNotExist(request);
+                    listMsgRequestInPeer.add(request);
                 }
 
             }
-            listMsgRequest.removeAll(listMsgRequestForPeer);
         }
 
-        // add queue peer
-        for (Entry<PeerNonBlock, List<MsgRequest>> entry : mapPeerAndMsgRequest.entrySet()) {
-            PeerNonBlock peerNonBlock = entry.getKey();
-            List<MsgRequest> listMsgRequestForPeer = entry.getValue();
-
-            for(MsgRequest msg : listMsgRequestForPeer){
-               peerNonBlock.queueNewMsgIfNotExist(msg);
-            }
-        }
     }
 
     // Process Pieces Recieve from peers
@@ -327,7 +323,14 @@ public class BasicManagerPeer implements ManagerPeer{
     @Override
     public void queueNewMsg(PeerNonBlock peer, MsgRequest msg) { queueRecieveMsgRequest.add(msg); }
     @Override
-    public void queueNewMsg(PeerNonBlock peer, MsgPiece msg) { queueRecieveMsgPiece.add(msg); }
+    public void queueNewMsg(PeerNonBlock peer, MsgPiece msg) {
+        queueRecieveMsgPiece.add(msg);
+        for(PeerNonBlock peerSend : mapChannelAndPeer.values()){
+            if(!peerSend.equals(peer)){
+                peerSend.queueNewMsg(new MsgCancel(msg.getPosition(), msg.getBegin(), msg.getEnd()));
+            }
+        }
+    }
 
     // Util selector
     // @todo Mitigar

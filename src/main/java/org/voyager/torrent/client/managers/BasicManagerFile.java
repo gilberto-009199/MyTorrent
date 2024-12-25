@@ -32,9 +32,11 @@ public class BasicManagerFile implements ManagerFile{
 
     // mapped packets MsgPiece
     private Map<Integer, List<MsgPiece>> mapReciveMsgPiece;
+    private List<MsgRequest> listMsgRequest;
 
     public BasicManagerFile(ClientTorrent client){
         this.client                 = client;
+        this.listMsgRequest         = new ArrayList<>();
         this.torrent                = client.getTorrent();
         this.lockMap                = new ReentrantLock();
         this.managerPeer            = client.getManagerPeer();
@@ -68,6 +70,7 @@ public class BasicManagerFile implements ManagerFile{
     private void process(){
         // process MsgPices recieve in My Queue 
         processRecieveMsgPiece();
+        calcMsgRequest();
         // verify blocks hashes
         // recalcMap and MsgRequest
     }
@@ -83,9 +86,12 @@ public class BasicManagerFile implements ManagerFile{
                 int offset = piece.getPosition() * map.getSizePiece();
                 int begin = piece.getBegin();
 
-                // save file in ramdom file
+                // save file in random file
                 randomAccessFile.seek(offset + begin);
                 randomAccessFile.write(piece.getBlock());
+
+                mapReciveMsgPiece.putIfAbsent(piece.getPosition(), new ArrayList<>());
+                mapReciveMsgPiece.get(piece.getPosition()).add(piece);
 
                 System.out.println("Piece: "+ piece);
                 System.out.println(" offset: "+ offset);
@@ -105,10 +111,11 @@ public class BasicManagerFile implements ManagerFile{
     }
 
     public List<MsgRequest> calcMsgRequest(){
-        
-        List<MsgRequest> listMsgRequest = new ArrayList<>();
-        
+
         lockMap.lock();
+
+        listMsgRequest = new ArrayList<>();
+
         try {
             
             //map.reCalcMap();
@@ -219,6 +226,10 @@ public class BasicManagerFile implements ManagerFile{
     private boolean isInterrupted(){ return Thread.currentThread().isInterrupted(); }
 
     public PiecesMap getMap() { return map;  }
+
+    @Override
+    public List<MsgRequest> msgRequest() { return this.listMsgRequest; }
+
     public void setMap(PiecesMap map) { this.map = map; }
 
     public Torrent getTorrent() { return torrent; }

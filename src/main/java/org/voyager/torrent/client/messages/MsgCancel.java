@@ -98,6 +98,15 @@ public class MsgCancel implements Msg{
     @Override
     public int getID(){ return ID; }
 
+    public int getPosition() {        return position;    }
+    public void setPosition(int position) {        this.position = position;    }
+
+    public int getBegin() {   return begin;    }
+    public void setBegin(int begin) {       this.begin = begin;    }
+
+    public int getLength() {       return length;    }
+    public void setLength(int length) {        this.length = length;    }
+
     @Override
     public String toString(){
         return "MsgCancel[position: "+ position +", begin: "+ begin +", length: "+ length +"]";
