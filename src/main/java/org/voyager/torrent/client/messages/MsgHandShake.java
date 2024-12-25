@@ -64,7 +64,7 @@ public class MsgHandShake implements Msg{
 
 		if (!Arrays.equals(this.protocol, PROTOCOL)){
 			try {
-				System.out.write(protocol);
+				System.out.write(packet);
 			} catch (IOException e) {}
 			throw new RuntimeException(" Error Invalid protocol identifier: "+ new String(packet, StandardCharsets.US_ASCII));
 		}

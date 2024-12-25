@@ -14,5 +14,6 @@ public interface ManagerFile extends Runnable{
     List<MsgRequest> calcMsgRequest();
     void queueMsg(MsgPiece msg);
     PiecesMap getMap();
-    
+
+    List<MsgRequest> msgRequest();
 }

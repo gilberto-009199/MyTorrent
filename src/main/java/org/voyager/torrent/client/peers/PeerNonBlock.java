@@ -19,6 +19,7 @@ import org.voyager.torrent.client.messages.*;
 import org.voyager.torrent.client.metrics.PeerMetrics;
 import org.voyager.torrent.client.network.Network;
 
+// @todo no futuro criar uma unica e grande fila aonde os pares seriam chamdos por um invocador
 public class PeerNonBlock implements Comparable<PeerNonBlock>{
 
 	// Config
@@ -66,6 +67,14 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 	// Queue Msg Writer
 	public void queueNewMsgIfNotExist(Msg msg) { if(!queueMsg.contains(msg))queueNewMsg(msg); }
 	public void queueNewMsg(Msg msg) {
+
+		// tratar MsgCancel
+		// @todo melhroar isso talves na super fila de Msg
+		if(msg instanceof MsgCancel){
+			MsgCancel msgCancel = (MsgCancel) msg;
+			queueMsg.remove(new MsgRequest(msgCancel.getPosition(), msgCancel.getBegin(), msgCancel.getLength()));
+		}
+
 		queueMsg.add(msg);
 	}
 	public void processQueueNewMsg() {
