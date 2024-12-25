@@ -8,6 +8,8 @@
    ClientTorrent mytorrent = new ClientTorrent("debian_bookworm12.torrent");
    mytorrent.start(); // non blocking main-threat
    ```
+   
+   ![Tela inicial](./terminal.png)
 
    Tarefas/Tasks:
    + .torrent OK!
@@ -16,17 +18,17 @@
    + connect others peers OK!
    + Implement Life Cycle Peer:
       + send MsgHandshake     OK!
-      + send MsgBitfield      OK
-      + send MsgRequest       ~
+      + send MsgBitfield      OK!
+      + send MsgRequest       OK!
       + MsgPiece              ~
-      + MsgCancel 
+      + MsgCancel             OK!
       + MsgNotInterested/MsgInterested OK
-      + MsgChoke/MsgUnChoke  ~
+      + MsgChoke/MsgUnChoke  OK!
       + Otimize and Mitigation Cases
    + Mounted File
      + Create file OK!
      + Verify File for Sha1 OK!
-     + Mounted file for MsgPieces ~
+     + Mounted file for MsgPieces OK!
    + adding interface for config client
    + adding listener event client
    + return CompletableFuture in Start
