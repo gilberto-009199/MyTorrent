@@ -9,7 +9,7 @@
    mytorrent.start(); // non blocking main-threat
    ```
    
-   ![Tela inicial](./terminal.png)
+   ![Tela inicial](./terminal.gif)
 
    Tarefas/Tasks:
    + .torrent OK!
