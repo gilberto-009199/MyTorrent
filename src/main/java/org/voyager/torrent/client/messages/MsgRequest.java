@@ -34,24 +34,24 @@ public class MsgRequest implements Msg{
         
         //	<len=0013><id=6><index><begin><length>
         this.position = (
-            packet[index++] << 24   +
-            packet[index++] << 16   +
-            packet[index++] << 8    +
-            packet[index++]
+                ((packet[index++] & 0xFF) << 24)   |
+                ((packet[index++] & 0xFF) << 16)   |
+                ((packet[index++] & 0xFF) << 8 )   |
+                ( packet[index++] & 0xFF)
         );
 
         this.begin = (
-            packet[index++] << 24   +
-            packet[index++] << 16   +
-            packet[index++] << 8    +
-            packet[index++]
+                ((packet[index++] & 0xFF) << 24)   |
+                ((packet[index++] & 0xFF) << 16)   |
+                ((packet[index++] & 0xFF) << 8 )   |
+                ( packet[index++] & 0xFF)
         );
 
         this.length = (
-            packet[index++] << 24   +
-            packet[index++] << 16   +
-            packet[index++] << 8    +
-            packet[index]
+                ((packet[index++] & 0xFF) << 24)   |
+                ((packet[index++] & 0xFF) << 16)   |
+                ((packet[index++] & 0xFF) << 8 )   |
+                ( packet[index] & 0xFF)
         );
         
     }

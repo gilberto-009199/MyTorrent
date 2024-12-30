@@ -2,15 +2,21 @@ package org.voyager.torrent.client.managers;
 
 import java.util.concurrent.Semaphore;
 
+import org.voyager.torrent.client.ClientTorrent;
 import org.voyager.torrent.client.files.Torrent;
 
 public interface ManagerAnnounce extends Runnable{
-    public Torrent getTorrent();
-    
-    public ManagerAnnounce withManagerFile(ManagerFile managerFile);
-    public ManagerAnnounce withManagerPeer(ManagerPeer managerPeer);
-    public ManagerAnnounce withSemaphoreExecutor(Semaphore semaphoreExecutor);
-    public ManagerAnnounce withTimeReAnnounceInSecond(int timeReAnnounceInSecond);
-    public ManagerAnnounce withTimeVerifyNewsPeersInSecond(int timeVerifyNewsPeersInSecond);
+
+    // Getters
+    Torrent getTorrent();
+
+    // Withs
+    ManagerAnnounce withTorrent(Torrent torrent);
+    ManagerAnnounce withManagerFile(ManagerFile managerFile);
+    ManagerAnnounce withManagerPeer(ManagerPeer managerPeer);
+    ManagerAnnounce withClientTorrent(ClientTorrent clientTorrent);
+    ManagerAnnounce withSemaphoreExecutor(Semaphore semaphoreExecutor);
+    ManagerAnnounce withTimeReAnnounceInSecond(int timeReAnnounceInSecond);
+    ManagerAnnounce withTimeVerifyNewsPeersInSecond(int timeVerifyNewsPeersInSecond);
 
 }

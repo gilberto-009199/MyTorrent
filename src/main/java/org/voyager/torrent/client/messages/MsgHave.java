@@ -28,10 +28,10 @@ public class MsgHave implements Msg{
 		};
 		// <piece index> (4 bytes)
 		this.position = (
-				packet[index++] << 24   +
-				packet[index++] << 16   +
-				packet[index++] << 8    +
-				packet[index++]
+				((packet[index++] & 0xFF) << 24)   |
+				((packet[index++] & 0xFF) << 16)   |
+				((packet[index++] & 0xFF) << 8 )   |
+				( packet[index] & 0xFF)
 		);
 	}
 

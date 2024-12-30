@@ -131,12 +131,13 @@ public class Torrent {
 	}
     
     // @todo create method magnetc link
-    public static Torrent of(String path){
+    public static Torrent of(String path){ return of(new File(path)); }
+    public static Torrent of(File file){
         Torrent instance = new Torrent();
 
-        if(path == null || path.isEmpty())throw new RuntimeException("File not exist");
+        if(file == null || !file.exists())throw new RuntimeException("File not exist");
 
-        TorrentInfo info = parceTorrentFile(path);
+        TorrentInfo info = parceTorrentFile(file);
 
         if(info == null)throw new RuntimeException("File In format Incorrect");
         

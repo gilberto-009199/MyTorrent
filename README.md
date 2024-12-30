@@ -5,8 +5,8 @@
   May God help me finish it by Christmas lol!!!
 
    ```java
-   ClientTorrent mytorrent = new ClientTorrent("debian_bookworm12.torrent");
-   mytorrent.start(); // non blocking main-threat
+    ClientTorrent client = ClientTorrentBuilder.of("debian_bookworm12.torrent").build();
+    client.start(); // non blocking main-threat
    ```
 
    Tarefas/Tasks:
@@ -15,13 +15,15 @@
    + announce servers/trackers OK!
    + connect others peers OK!
    + Implement Life Cycle Peer:
-      + send MsgHandshake     OK!
-      + send MsgBitfield      OK
-      + send MsgRequest       ~
-      + MsgPiece              ~
-      + MsgCancel 
-      + MsgNotInterested/MsgInterested OK
-      + MsgChoke/MsgUnChoke  ~
+      + [MsgHandshake](./src/main/java/org/voyager/torrent/client/messages/MsgHandShake.java)     OK!
+      + [MsgBitfield](./src/main/java/org/voyager/torrent/client/messages/MsgBitfield.java)      OK
+      + [MsgRequest](./src/main/java/org/voyager/torrent/client/messages/MsgRequest.java)       ~
+      + [MsgPiece](./src/main/java/org/voyager/torrent/client/messages/MsgPiece.java)              ~
+      + [MsgCancel](./src/main/java/org/voyager/torrent/client/messages/MsgCancel.java) OK
+      + [MsgInterested](./src/main/java/org/voyager/torrent/client/messages/MsgInterested.java) OK
+      + [MsgNotInterested](./src/main/java/org/voyager/torrent/client/messages/MsgNotInterested.java) OK
+      + [MsgChoke](./src/main/java/org/voyager/torrent/client/messages/MsgChoke.java)  ~
+      + [MsgUnChoke](./src/main/java/org/voyager/torrent/client/messages/MsgUnChoke.java) ~
       + Otimize and Mitigation Cases
    + Mounted File
      + Create file OK!

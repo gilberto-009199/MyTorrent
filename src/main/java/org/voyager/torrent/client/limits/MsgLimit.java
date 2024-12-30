@@ -18,16 +18,38 @@ public class MsgLimit {
 	private final CountMsgLimit countRequestLimit;
 
 	public MsgLimit(int maxMsgPeerSecond){
-		this.countLimit					= new CountMsgLimit(maxMsgPeerSecond);
-		this.countChokeLimit			= new CountMsgLimit(Math.min(4, maxMsgPeerSecond));
-		this.countUnChokeLimit			= new CountMsgLimit(Math.min(4, maxMsgPeerSecond));
-		this.countBitfieldLimit			= new CountMsgLimit(Math.min(2, maxMsgPeerSecond));
+		this.countLimit					= new CountMsgLimit(			 maxMsgPeerSecond);
+		this.countChokeLimit			= new CountMsgLimit(Math.min(4,  maxMsgPeerSecond));
+		this.countUnChokeLimit			= new CountMsgLimit(Math.min(4,  maxMsgPeerSecond));
+		this.countBitfieldLimit			= new CountMsgLimit(Math.min(2,  maxMsgPeerSecond));
 		this.countCancelLimit			= new CountMsgLimit(Math.min(10, maxMsgPeerSecond));
-		this.countHaveLimit				= new CountMsgLimit(Math.min(4, maxMsgPeerSecond));
-		this.countInterestedlLimit		= new CountMsgLimit(Math.min(2, maxMsgPeerSecond));
-		this.countNotInterestedLimit	= new CountMsgLimit(Math.min(2, maxMsgPeerSecond));
-		this.countPieceLimit			= new CountMsgLimit(Math.min(4, maxMsgPeerSecond));
-		this.countRequestLimit			= new CountMsgLimit(Math.min(5, maxMsgPeerSecond));
+		this.countHaveLimit				= new CountMsgLimit(Math.min(4,  maxMsgPeerSecond));
+		this.countInterestedlLimit		= new CountMsgLimit(Math.min(2,  maxMsgPeerSecond));
+		this.countNotInterestedLimit	= new CountMsgLimit(Math.min(2,  maxMsgPeerSecond));
+		this.countPieceLimit			= new CountMsgLimit(Math.min(4,  maxMsgPeerSecond));
+		this.countRequestLimit			= new CountMsgLimit(Math.min(5,  maxMsgPeerSecond));
+	}
+
+	public MsgLimit(int countLimit,
+					int countChokeLimit,
+					int countUnChokeLimit,
+					int countBitfieldLimit,
+					int countCancelLimit,
+					int countHaveLimit,
+					int countInterestedlLimit,
+					int countNotInterestedLimit,
+					int countPieceLimit,
+					int countRequestLimit){
+		this.countLimit					= new CountMsgLimit(countLimit);
+		this.countChokeLimit			= new CountMsgLimit(Math.min(countChokeLimit,  			countLimit));
+		this.countUnChokeLimit			= new CountMsgLimit(Math.min(countUnChokeLimit,  		countLimit));
+		this.countBitfieldLimit			= new CountMsgLimit(Math.min(countBitfieldLimit,  		countLimit));
+		this.countCancelLimit			= new CountMsgLimit(Math.min(countCancelLimit, 			countLimit));
+		this.countHaveLimit				= new CountMsgLimit(Math.min(countHaveLimit,  			countLimit));
+		this.countInterestedlLimit		= new CountMsgLimit(Math.min(countInterestedlLimit, 	countLimit));
+		this.countNotInterestedLimit	= new CountMsgLimit(Math.min(countNotInterestedLimit,	countLimit));
+		this.countPieceLimit			= new CountMsgLimit(Math.min(countPieceLimit,  			countLimit));
+		this.countRequestLimit			= new CountMsgLimit(Math.min(countRequestLimit,  		countLimit));
 	}
 
 	public synchronized boolean tryConsume(Msg msg) {

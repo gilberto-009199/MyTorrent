@@ -43,15 +43,19 @@ public class BasicManagerPeer implements ManagerPeer{
 
     private Map<SocketChannel, PeerNonBlock> mapChannelAndPeer;
 
-    public BasicManagerPeer(ClientTorrent client){
-        this.client                 = client;
-        this.torrent                = client.getTorrent();
-        this.managerAnnounce        = client.getManagerAnnounce();
-        this.managerFile            = client.getManagerFile();
+    public BasicManagerPeer(){
         this.mapChannelAndPeer      = new ConcurrentHashMap<>();
         this.queueNewsPeer          = new ConcurrentLinkedQueue<>();
         this.queueRecieveMsgPiece   = new ConcurrentLinkedQueue<>();
         this.queueRecieveMsgRequest = new ConcurrentLinkedQueue<>();
+    }
+
+    public BasicManagerPeer(ClientTorrent client){
+        this();
+        this.client                 = client;
+        this.torrent                = client.getTorrent();
+        this.managerAnnounce        = client.getManagerAnnounce();
+        this.managerFile            = client.getManagerFile();
     }
 
     @Override
@@ -111,8 +115,11 @@ public class BasicManagerPeer implements ManagerPeer{
             } catch (Exception e) {
                 System.err.println("Erro ao processar chave: " + e.getMessage());
                 e.printStackTrace();
-                closeChannel((SocketChannel) key.channel());
+                SocketChannel channel = (SocketChannel) key.channel();
+                mapChannelAndPeer.remove(channel);
+                closeChannel(channel);
                 key.cancel();
+
             }
         }
 
@@ -255,7 +262,7 @@ public class BasicManagerPeer implements ManagerPeer{
 
                 byte[] map = peerNonBlock.getPiecesMap().getMap();
 
-                if(map.length >= request.getPosition() && map[request.getPosition()] != 0){
+                if(map[request.getPosition()] != 0){
 
                     peerNonBlock.queueNewMsgIfNotExist(request);
                     listMsgRequestInPeer.add(request);
@@ -279,7 +286,6 @@ public class BasicManagerPeer implements ManagerPeer{
         // verify piece exist in managerFile
         // see exist add queue for return picei
     }
-
 
     // Process Queue
     private void processQueueNewsPeer(){
@@ -358,9 +364,12 @@ public class BasicManagerPeer implements ManagerPeer{
         return this;
     }
 
-
     @Override
     public Torrent getTorrent() { return this.torrent; }
+    public ManagerPeer withTorrent(Torrent torrent) {
+        this.torrent = torrent;
+        return this;
+    }
 
     @Override
     public boolean connectError(Peer peer) {
@@ -400,9 +409,21 @@ public class BasicManagerPeer implements ManagerPeer{
 
     @Override
     public ManagerFile getManagerFile() { return this.managerFile;  }
+
+
+
     @Override
     public ManagerPeer withManagerFile(ManagerFile managerFile) {
         this.managerFile = managerFile;
+        return this;
+    }
+
+    @Override
+    public ManagerPeer withClientTorrent(ClientTorrent clientTorrent) {
+        this.client                 = clientTorrent;
+        this.torrent                = clientTorrent.getTorrent();
+        this.managerAnnounce        = clientTorrent.getManagerAnnounce();
+        this.managerFile            = clientTorrent.getManagerFile();
         return this;
     }
 

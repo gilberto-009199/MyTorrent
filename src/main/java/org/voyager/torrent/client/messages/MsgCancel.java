@@ -30,25 +30,25 @@ public class MsgCancel implements Msg{
         };
         // <index|position in piece> (4 bytes)
         this.position = (
-                packet[index++] << 24   +
-                packet[index++] << 16   +
-                packet[index++] << 8    +
-                packet[index++]
+                ((packet[index++] & 0xFF) << 24)   |
+                ((packet[index++] & 0xFF) << 16)   |
+                ((packet[index++] & 0xFF) << 8 )   |
+                ( packet[index++] & 0xFF)
         );
         // <begin> (4 bytes)
         this.begin = (
-                packet[index++] << 24   +
-                packet[index++] << 16   +
-                packet[index++] << 8    +
-                packet[index++]
+                ((packet[index++] & 0xFF) << 24)   |
+                ((packet[index++] & 0xFF) << 16)   |
+                ((packet[index++] & 0xFF) << 8 )   |
+                ( packet[index++] & 0xFF)
         );
 
         // <length> (4 bytes)
         this.length = (
-                packet[index++] << 24   +
-                packet[index++] << 16   +
-                packet[index++] << 8    +
-                packet[index]
+                ((packet[index++] & 0xFF) << 24)   |
+                ((packet[index++] & 0xFF) << 16)   |
+                ((packet[index++] & 0xFF) << 8 )   |
+                ( packet[index] & 0xFF)
         );
 
     }
