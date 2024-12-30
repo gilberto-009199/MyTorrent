@@ -34,13 +34,16 @@ public class BasicManagerFile implements ManagerFile{
     private Map<Integer, List<MsgPiece>> mapReciveMsgPiece;
     private List<MsgRequest> listMsgRequest;
 
-    public BasicManagerFile(ClientTorrent client){
-        this.client                 = client;
+    public BasicManagerFile(){
         this.listMsgRequest         = new ArrayList<>();
-        this.torrent                = client.getTorrent();
         this.lockMap                = new ReentrantLock();
-        this.managerPeer            = client.getManagerPeer();
         this.queueRecieveMsgPiece   = new ConcurrentLinkedQueue<>();
+    }
+    public BasicManagerFile(ClientTorrent client){
+        this();
+        this.client                 = client;
+        this.torrent                = client.getTorrent();
+        this.managerPeer            = client.getManagerPeer();
         this.map                    = new PiecesMap(client.getTorrent());
         this.mapReciveMsgPiece      = new HashMap<>(this.map.getMap().length);
     }
@@ -57,8 +60,8 @@ public class BasicManagerFile implements ManagerFile{
 
                 process();
 
-            } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
-              finally {
+            } catch (InterruptedException e) {Thread.currentThread().interrupt(); }
+            finally {
                 semaphoreExecutor.release();
             }
             System.out.println("-------- ManagerFile -------");
@@ -230,6 +233,12 @@ public class BasicManagerFile implements ManagerFile{
     @Override
     public List<MsgRequest> msgRequest() { return this.listMsgRequest; }
 
+    @Override
+    public ManagerFile withTorrent(Torrent torrent) {
+        this.torrent = torrent;
+        return this;
+    }
+
     public void setMap(PiecesMap map) { this.map = map; }
 
     public Torrent getTorrent() { return torrent; }
@@ -250,6 +259,16 @@ public class BasicManagerFile implements ManagerFile{
     @Override
     public ManagerFile withSemaphoreExecutor(Semaphore semaphoreExecutor) {
         this.semaphoreExecutor = semaphoreExecutor;
+        return this;
+    }
+
+    @Override
+    public ManagerFile withClientTorrent(ClientTorrent clientTorrent) {
+        this.client                 = clientTorrent;
+        this.torrent                = clientTorrent.getTorrent();
+        this.managerPeer            = clientTorrent.getManagerPeer();
+        this.map                    = new PiecesMap(clientTorrent.getTorrent());
+        this.mapReciveMsgPiece      = new HashMap<>(this.map.getMap().length);
         return this;
     }
 }

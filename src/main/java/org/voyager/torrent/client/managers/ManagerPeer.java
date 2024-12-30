@@ -2,6 +2,7 @@ package org.voyager.torrent.client.managers;
 
 import java.util.concurrent.Semaphore;
 
+import org.voyager.torrent.client.ClientTorrent;
 import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.messages.Msg;
 import org.voyager.torrent.client.peers.Peer;
@@ -11,28 +12,31 @@ import org.voyager.torrent.client.messages.MsgPiece;
 import org.voyager.torrent.client.messages.MsgRequest;
 
 
-/* meu circulo de vida de gerenciador*/
 public interface ManagerPeer extends Runnable {
 
-	public ManagerFile getManagerFile();
-	
-	public ManagerPeer withManagerFile(ManagerFile managerFile);
-	public ManagerPeer withSemaphoreExecutor(Semaphore semaphoreExecutor);
-	public ManagerPeer withManagerAnnounce( ManagerAnnounce managerAnnounce);
-	
-	public Torrent getTorrent();
-	public void queueNewMsg(PeerNonBlock peer, MsgRequest msg);
-	public void queueNewMsg(PeerNonBlock peer, MsgPiece msg);
+	// Actions
+	void queueNewMsg(PeerNonBlock peer, MsgRequest msg);
+	void queueNewMsg(PeerNonBlock peer, MsgPiece msg);
+	void queueNewsPeer(PeerNonBlock peer);
+	void queueNewsPeerIfNotPresent(PeerNonBlock peer);
 
-	public boolean connectError(Peer peer);
-	public boolean shakeHandsError(Peer peer);
-	public boolean downloaded(Peer peer);
-	public boolean uploaded(Peer peer);
+	// Hooks
+	boolean connectError(Peer peer);
+	boolean shakeHandsError(Peer peer);
+	boolean downloaded(Peer peer);
+	boolean uploaded(Peer peer);
+	void addInterestPeer(Peer peer);
+	void removeInterestPeer(Peer peer);
 
-	public void queueNewsPeer(PeerNonBlock peer);
-    public void queueNewsPeerIfNotPresent(PeerNonBlock peer);
+	// Getters
+	Torrent getTorrent();
+	ManagerFile getManagerFile();
 
-    public void addInterestPeer(Peer peer);
-    public void removeInterestPeer(Peer peer);
-    
+	// Withs
+	ManagerPeer withTorrent(Torrent torrent);
+	ManagerPeer withManagerFile(ManagerFile managerFile);
+	ManagerPeer withClientTorrent(ClientTorrent clientTorrent);
+	ManagerPeer withSemaphoreExecutor(Semaphore semaphoreExecutor);
+	ManagerPeer withManagerAnnounce( ManagerAnnounce managerAnnounce);
+
 }

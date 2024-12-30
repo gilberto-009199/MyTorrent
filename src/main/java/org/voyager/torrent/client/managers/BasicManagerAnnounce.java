@@ -23,9 +23,12 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
     private Long lastAnnounceTime;
     private Long lastVerifyPeersTime;
 
+    public BasicManagerAnnounce(Torrent torrent){
+        this.torrent = torrent;
+    }
     public BasicManagerAnnounce(ClientTorrent client){
+        this(client.getTorrent());
         this.client = client;
-        this.torrent = client.getTorrent();
         this.managerPeer = client.getManagerPeer();
         this.managerFile = client.getManagerFile();
     }
@@ -91,8 +94,20 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
     public Torrent getTorrent() { return this.torrent; }
 
     @Override
+    public ManagerAnnounce withTorrent(Torrent torrent) {
+        this.torrent = torrent;
+        return this;
+    }
+
+    @Override
     public ManagerAnnounce withManagerPeer(ManagerPeer managerPeer) {
         this.managerPeer = managerPeer;
+        return this;
+    }
+
+    @Override
+    public ManagerAnnounce withClientTorrent(ClientTorrent clientTorrent) {
+        this.client = clientTorrent;
         return this;
     }
 

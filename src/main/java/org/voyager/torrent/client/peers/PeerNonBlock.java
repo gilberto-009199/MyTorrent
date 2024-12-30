@@ -5,6 +5,7 @@ import java.lang.reflect.Array;
 import java.net.ConnectException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -18,6 +19,7 @@ import org.voyager.torrent.client.managers.ManagerPeer;
 import org.voyager.torrent.client.messages.*;
 import org.voyager.torrent.client.metrics.PeerMetrics;
 import org.voyager.torrent.client.network.Network;
+import sun.awt.X11.XSystemTrayPeer;
 
 // @todo no futuro criar uma unica e grande fila aonde os pares seriam chamdos por um invocador
 public class PeerNonBlock implements Comparable<PeerNonBlock>{
@@ -244,6 +246,7 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 		if(verbouse)System.out.println("\t  Transfere um pedaço de uma peça solicitada para o peer que fez o pedido. Contém os dados reais do arquivo.");
 
 		MsgPiece msg = new MsgPiece(buff);
+
 		this.manager.queueNewMsg(this, msg);
 	}
 

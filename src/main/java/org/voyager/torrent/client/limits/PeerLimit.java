@@ -7,9 +7,12 @@ public class PeerLimit {
 	public MsgLimit msgLimit;
 	public BandWidthLimit bandWidthLimit;
 
-	public PeerLimit(int maxMsgPeerSecond, int maxBandWidthPeerSecoud){
-		this.msgLimit = new MsgLimit(maxMsgPeerSecond);
-		this.bandWidthLimit = new BandWidthLimit(maxBandWidthPeerSecoud);
+	public PeerLimit(int maxMsgPeerSecond, int maxBandWidthPeerSecond){
+		this(new MsgLimit(maxMsgPeerSecond), new BandWidthLimit(maxBandWidthPeerSecond));
+	}
+	public PeerLimit(MsgLimit msgLimit, BandWidthLimit bandWidthLimit){
+		this.msgLimit = msgLimit;
+		this.bandWidthLimit = bandWidthLimit;
 	}
 
 	public synchronized boolean tryConsume(Msg msg) {
