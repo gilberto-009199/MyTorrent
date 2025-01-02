@@ -1,6 +1,6 @@
 package org.voyager.torrent.client.network;
 
-import org.voyager.torrent.client.messages.Msg;
+import org.voyager.torrent.client.network.messages.Msg;
 
 import java.io.IOException;
 import java.nio.Buffer;

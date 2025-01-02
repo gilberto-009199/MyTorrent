@@ -11,12 +11,12 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.voyager.torrent.client.enums.ClientTorrentType;
-import org.voyager.torrent.client.exceptions.HandShakeInvalidException;
-import org.voyager.torrent.client.exceptions.NoReaderBufferException;
+import org.voyager.torrent.client.network.exceptions.HandShakeInvalidException;
+import org.voyager.torrent.client.network.exceptions.NoReaderBufferException;
 import org.voyager.torrent.client.files.PiecesMap;
-import org.voyager.torrent.client.limits.PeerLimit;
+import org.voyager.torrent.client.network.limits.PeerLimit;
 import org.voyager.torrent.client.managers.ManagerPeer;
-import org.voyager.torrent.client.messages.*;
+import org.voyager.torrent.client.network.messages.*;
 import org.voyager.torrent.client.metrics.PeerMetrics;
 import org.voyager.torrent.client.network.Network;
 import sun.awt.X11.XSystemTrayPeer;
