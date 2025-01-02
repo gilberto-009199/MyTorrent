@@ -1,6 +1,7 @@
-package org.voyager.torrent.client.network.messages;
+package org.voyager.torrent.client.net.messages;
 
 import org.voyager.torrent.client.files.PiecesMap;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /* @doc:
  		https://wiki.theory.org/BitTorrentSpecification#Messages
@@ -31,6 +32,11 @@ public class MsgBitfield implements Msg{
 	public int length(){
 		// <4 bytes LEN> + <1 byte ID> + <pieceMap>
 		return 4 + 1 + map.getMap().length;
+	}
+
+	@Override
+	public void of(byte[] packet) {
+		throw new NotImplementedException();
 	}
 
 	@Override

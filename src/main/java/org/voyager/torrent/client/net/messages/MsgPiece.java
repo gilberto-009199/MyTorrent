@@ -1,5 +1,7 @@
-package org.voyager.torrent.client.network.messages;
+package org.voyager.torrent.client.net.messages;
 
+
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Arrays;
 
@@ -95,6 +97,10 @@ public class MsgPiece implements Msg{
         return packet;
     }
 
+    @Override
+    public void of(byte[] packet) {
+        throw new NotImplementedException();
+    }
 
     public MsgPiece withPosition(int position){
         this.position = position;

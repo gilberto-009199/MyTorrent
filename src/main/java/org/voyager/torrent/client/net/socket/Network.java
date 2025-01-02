@@ -1,24 +1,27 @@
-package org.voyager.torrent.client.network;
+package org.voyager.torrent.client.net.socket;
 
-import org.voyager.torrent.client.network.messages.Msg;
+import org.voyager.torrent.client.net.messages.Msg;
+import org.voyager.torrent.client.net.messages.MsgHandShake;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
 public interface Network{
 
 	// @todo adicionar mais abstrações no futuro
-
 	boolean isRedable();
 	boolean isWritable();
 	boolean isOpen();
 
-	int write(Msg msg)throws IOException;
-	int write(ByteBuffer buffer)throws IOException;
-	int write(byte[] buffer)throws IOException ;
+	NetworkResult write(Msg msg);
+	NetworkResult write(ByteBuffer buffer);
+	NetworkResult write(byte[] buffer);
 
-	int read(ByteBuffer buffer)throws IOException ;
-	int read(byte[] buffer)throws IOException ;
-	int read(int bytes)throws IOException ;
-	int readFull(ByteBuffer contentBuffer) throws IOException;
+	NetworkResult read(int bytes);
+	NetworkResult read(byte[] buffer);
+	NetworkResult read(MsgHandShake msg);
+	NetworkResult readMsg();
+	NetworkResult read(ByteBuffer buffer);
+	NetworkResult readFull(ByteBuffer contentBuffer);
 }

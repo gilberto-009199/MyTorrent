@@ -3,8 +3,6 @@ package org.voyager.torrent;
 import org.voyager.torrent.client.ClientTorrent;
 
 import org.voyager.torrent.client.builders.*;
-import org.voyager.torrent.client.limits.BandWidthLimit;
-import org.voyager.torrent.client.limits.MsgLimit;
 
 public class Main {
 

@@ -1,5 +1,8 @@
 package org.voyager.torrent.client.metrics;
 
+import org.voyager.torrent.client.net.metrics.BandWidthMetrics;
+import org.voyager.torrent.client.net.metrics.MsgMetrics;
+
 public class PeerMetrics implements Comparable<PeerMetrics>{
 
 	public BandWidthMetrics bandWidthMetrics;

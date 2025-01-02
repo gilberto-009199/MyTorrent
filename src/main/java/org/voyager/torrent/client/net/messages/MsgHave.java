@@ -1,5 +1,7 @@
-package org.voyager.torrent.client.network.messages;
+package org.voyager.torrent.client.net.messages;
 
+
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /* @doc:
         https://wiki.theory.org/BitTorrentSpecification#Messages
@@ -53,6 +55,11 @@ public class MsgHave implements Msg{
 				(byte) (position >> 8),
 				(byte) position
 		};
+	}
+
+	@Override
+	public void of(byte[] packet) {
+		throw new NotImplementedException();
 	}
 
 	@Override

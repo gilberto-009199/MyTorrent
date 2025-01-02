@@ -1,32 +1,136 @@
 package org.voyager.torrent.client.peers;
 
+import org.voyager.torrent.client.net.socket.Network;
+import org.voyager.torrent.client.strategy.PeerStrategy;
+
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.net.ConnectException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.voyager.torrent.client.enums.ClientTorrentType;
-import org.voyager.torrent.client.network.exceptions.HandShakeInvalidException;
-import org.voyager.torrent.client.network.exceptions.NoReaderBufferException;
-import org.voyager.torrent.client.files.PiecesMap;
-import org.voyager.torrent.client.network.limits.PeerLimit;
-import org.voyager.torrent.client.managers.ManagerPeer;
-import org.voyager.torrent.client.network.messages.*;
-import org.voyager.torrent.client.metrics.PeerMetrics;
-import org.voyager.torrent.client.network.Network;
-import sun.awt.X11.XSystemTrayPeer;
+// @todo no futuro criar uma unica e grande fila aonde os pares seriam chamados por um invocador
+public class BasicPeer implements Peer{
 
-// @todo no futuro criar uma unica e grande fila aonde os pares seriam chamdos por um invocador
-public class PeerNonBlock implements Comparable<PeerNonBlock>{
+	// Info
+	private InfoPeer infoRemote;
+	private InfoPeer infoLocal;
 
+	// State Data
+	private StatePeer state;
+
+	// abstract network
+	private Network network;
+
+	private PeerStrategy strategy;
+
+	// Hooks
+	public void connected() throws IOException { strategy.processConnected(this); }
+	public void disconnected() throws IOException {	strategy.processDisconnected(this);	}
+
+	public void write() throws IOException {	strategy.processWriteMsg(this);	}
+	public void read() throws IOException { 	strategy.processReadMsg(this);	}
+
+		/*
+		if(!network.isRedable())return;
+		if(!hasHandshake){
+			readShake();
+			return;
+		}
+
+		// <4 bytes> for length, <1 byte> for ID message
+		ByteBuffer metadataBuffer = ByteBuffer.allocate(4);
+
+		int bytesRead = network.read(metadataBuffer);
+
+		if (bytesRead == -1) {
+			throw new ConnectException("fechar coneção");
+		}else if(bytesRead < 4){
+			// @todo remover isso, quando encontrar a jornada correta
+			System.out.println("No packet");
+			throw new NoReaderBufferException("No packet");
+		}
+
+		((Buffer) metadataBuffer).flip();
+
+		int length = metadataBuffer.getInt();
+		if (length == 0) {
+			System.out.println("Keep a Live");
+			return;
+		}
+
+		ByteBuffer contentBuffer = ByteBuffer.allocate(length);
+
+		network.readFull(contentBuffer);
+
+		((Buffer) contentBuffer).flip();
+
+		byte id = contentBuffer.get();
+
+		System.out.println("Receive: [len: "+ length +", id: "+ id +"] from "+ this);
+
+		readMsg(id, contentBuffer);*/
+
+
+	// Write
+	public boolean writeMsg() throws IOException {
+		if(!network.isWritable())return false;
+
+		/*
+		if(!network.isWritable())return false;
+		if(!limits.tryConsume(msg))return false;
+
+		try {
+			byte[] packet = msg.toPacket();
+
+			// @todo mapear caso de packet.length > network rate byte por second
+			if(network.isWritable()){
+
+				System.out.println("SEND: ["+ msg + "] to "+ this);
+
+				network.write(msg);
+
+			} else return false;
+
+		}catch (Exception e){
+			//isConnected = false;
+			//hasHandshake = false;
+			e.printStackTrace();
+			return false;
+		}
+		return true;*/
+	}
+
+	// Setters And Getters
+	@Override
+	public InfoPeer infoLocal() { return this.infoLocal; }
+	@Override
+	public Peer setInfoLocal(InfoPeer info) {
+		this.infoLocal = info;
+		return this;
+	}
+
+	@Override
+	public InfoPeer infoRemote() {	return this.infoRemote;	}
+	@Override
+	public Peer setInfoRemote(InfoPeer info) {
+		this.infoRemote = info;
+		return this;
+	}
+
+	@Override
+	public StatePeer statePeer() { return this.state; }
+	@Override
+	public Peer setStatePeer(StatePeer data) {
+		this.state = data;
+		return this;
+	}
+
+	@Override
+	public Network network() { return this.network;	}
+
+/*
 	// Config
 	private ClientTorrentType clientType;
 	private boolean verbouse = true;
+
 	// @todo colocar remote<Variavel> e local<Variavel>
 	private byte[] peerIdRemote;
 	private ManagerPeer manager;
@@ -50,13 +154,13 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 	// Data Queue Msg for Writer
 	private final Queue<Msg> queueMsg;
 
-	public PeerNonBlock() {
+	public BasicPeer() {
 		this.metrics = new PeerMetrics();
 		this.queueMsg = new ConcurrentLinkedQueue<Msg>();
 		this.limits	= new PeerLimit(20, 16 * 1024);
 	}
 
-	public PeerNonBlock(String host, int port, byte[] peerId, ManagerPeer client) {
+	public BasicPeer(String host, int port, byte[] peerId, ManagerPeer client) {
 		this();
 		this.host = host;
 		this.port = port;
@@ -258,32 +362,7 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 	public void writeShake() throws IOException {
 		this.writeMsg(new MsgHandShake(this.infoHash, this.peerId));
 	}
-	// write generic
-	public boolean writeMsg(Msg msg) throws IOException {
 
-		if(!network.isWritable())return false;
-		if(!limits.tryConsume(msg))return false;
-
-		try {
-			byte[] packet = msg.toPacket();
-
-			// @todo mapear caso de packet.length > network rate byte por second
-			if(network.isWritable()){
-
-				System.out.println("SEND: ["+ msg + "] to "+ this);
-
-				network.write(msg);
-
-			} else return false;
-
-		}catch (Exception e){
-			//isConnected = false;
-			//hasHandshake = false;
-			e.printStackTrace();
-			return false;
-		}
-		return true;
-	}
 
 	// Readers
 	// Reader HandShake
@@ -322,69 +401,12 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 		if(!this.hasHandshake)throw new HandShakeInvalidException("HandShake Invalid");
 		else processMsgHandShake(buffer);
 	}
-	// reader generic
-	public void readMsg() throws IOException {
 
-		if(!network.isRedable())return;
-		if(!hasHandshake){
-			readShake();
-			return;
-		}
 
-		// <4 bytes> for length, <1 byte> for ID message
-        ByteBuffer metadataBuffer = ByteBuffer.allocate(4);
-
-        int bytesRead = network.read(metadataBuffer);
-
-        if (bytesRead == -1) {
-            throw new ConnectException("fechar coneção");
-        }else if(bytesRead < 4){
-			// @todo remover isso, quando encontrar a jornada correta
-			System.out.println("No packet");
-			throw new NoReaderBufferException("No packet");
-		}
-
-		((Buffer) metadataBuffer).flip();
-
-        int length = metadataBuffer.getInt();
-        if (length == 0) {
-            System.out.println("Keep a Live");
-            return;
-		}
-
-		ByteBuffer contentBuffer = ByteBuffer.allocate(length);
-
-		network.readFull(contentBuffer);
-
-		((Buffer) contentBuffer).flip();
-
-		byte id = contentBuffer.get();
-
-		System.out.println("Receive: [len: "+ length +", id: "+ id +"] from "+ this);
-
-		readMsg(id, contentBuffer);
-	}
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null) return false;
-        if (! (obj instanceof PeerNonBlock))return false;
-
-        PeerNonBlock peer = (PeerNonBlock) obj;
-        return port == peer.port && host.equals(peer.host);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = host.hashCode();
-        result = 31 * result + port;
-        return result;
-    }
 
 	public PiecesMap getPiecesMap(){ return this.piecesMap; }
 	public void setPiecesMap(PiecesMap piecesMap){ this.piecesMap = piecesMap; }
-	public PeerNonBlock withPiecesMap(PiecesMap piecesMap){
+	public BasicPeer withPiecesMap(PiecesMap piecesMap){
 		this.piecesMap = piecesMap;
 		return this;
 	}
@@ -394,67 +416,84 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 
 	public ManagerPeer getManagerPeer() { return manager; }
 	public void setManagerPeer(ManagerPeer client) { this.manager = client;	}
-	public PeerNonBlock withManagerPeer(ManagerPeer client){
+	public BasicPeer withManagerPeer(ManagerPeer client){
 		this.manager = client;
 		return this;
 	}
 
 	public String getHost() { return host; }
 	public void setHost(String host) { this.host = host;}
-	public PeerNonBlock withHost(String host){
+	public BasicPeer withHost(String host){
 		this.host = host;
 		return this;
 	}
 
 	public int getPort() { return port; }
 	public void setPort(int port) { this.port = port; }
-	public PeerNonBlock withPort(int port){
+	public BasicPeer withPort(int port){
 		this.port = port;
 		return this;
 	}
 
 	public byte[] getPeerId() { return peerId; }
 	public void setPeerId(byte[] peerId) { this.peerId = peerId; }
-	public PeerNonBlock withPeerId(byte[] peerId){
+	public BasicPeer withPeerId(byte[] peerId){
 		this.peerId = peerId;
 		return this;
 	}
 
 	public byte[] getInfoHash() { return infoHash; }
 	public void setInfoHash(byte[] infoHash) { this.infoHash = infoHash; }
-	public PeerNonBlock withInfoHash(byte[] infoHash){
+	public BasicPeer withInfoHash(byte[] infoHash){
 		this.infoHash = infoHash;
 		return this;
 	}
 
 	public Network getNetwork() { return network; }
 	public void setNetwork(Network network) { this.network = network; }
-	public PeerNonBlock withNetwork(Network network) {
+	public BasicPeer withNetwork(Network network) {
 		this.network = network;
 		return this;
 	}
 
-	public boolean hasHandshake() { return this.hasHandshake; }
+	public boolean hasHandShake() { return this.hasHandshake; }
 	public void setHandshake(boolean hasHandshake) { this.hasHandshake = hasHandshake; }
 
 	public boolean isConnected() { return this.isConnected; }
 	public void setConneted(boolean isConnected) { this.isConnected = isConnected; }
+*/
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (! (obj instanceof BasicPeer))return false;
+
+		BasicPeer peer = (BasicPeer) obj;
+		return port == peer.port && host.equals(peer.host);
+	}
 
 	@Override
-	public int compareTo(PeerNonBlock peer) {
-		if( !this.isConnected && peer.isConnected )return -1;
+	public int hashCode() {
+		int result = host.hashCode();
+		result = 31 * result + port;
+		return result;
+	}
 
-		if( this.isConnected  && !peer.isConnected )return 1;
+	@Override
+	public int compareTo(Peer peer) {
+		if( !this.isConnected && peer.isConnected() )return -1;
 
-		if( this.choked && !peer.choked )return -1;
+		if( this.isConnected  && !peer.isConnected() )return 1;
 
-		if( !this.choked && peer.choked )return 1;
+		if( this.choked && !peer.isChoked() )return -1;
 
-		if( this.piecesMap == null && peer.piecesMap != null )return -1;
+		if( !this.choked && peer.isChoked() )return 1;
 
-		if( this.piecesMap != null && peer.piecesMap == null )return 1;
+		if( this.piecesMap == null && peer.getPiecesMap() != null )return -1;
 
-		return this.metrics.compareTo(peer.metrics);
+		if( this.piecesMap != null && peer.getPiecesMap() == null )return 1;
+
+		return this.metrics.compareTo(peer.getMetrics());
 	}
 
 	public String toString() {
@@ -465,5 +504,6 @@ public class PeerNonBlock implements Comparable<PeerNonBlock>{
 				", clientType: "+ this.clientType +
 				", Map: "+ this.piecesMap+"]";
 	}
+
 
 }

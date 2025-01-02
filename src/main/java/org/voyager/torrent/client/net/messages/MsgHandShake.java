@@ -1,8 +1,9 @@
-package org.voyager.torrent.client.network.messages;
+package org.voyager.torrent.client.net.messages;
 
 import org.voyager.torrent.client.enums.ClientTorrentType;
-import org.voyager.torrent.client.network.exceptions.HandShakeInvalidException;
+import org.voyager.torrent.client.net.exceptions.HandShakeInvalidException;
 import org.voyager.torrent.util.BinaryUtil;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +38,8 @@ public class MsgHandShake implements Msg{
 	private byte[] infoHash;
 	private byte[] peerId;
 
+	public MsgHandShake() {}
+
 	// <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
 	public MsgHandShake(byte[] infoHash, byte[] peerId) {
 		this.protocol  = PROTOCOL;
@@ -48,6 +51,56 @@ public class MsgHandShake implements Msg{
 
 	// <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
 	public MsgHandShake(byte[] packet) {
+		of(packet);
+	}
+
+	public boolean checkHandShake(byte[] packet){ return checkHandShake(packet, this.infoHash);	}
+	public boolean checkHandShake(MsgHandShake msg){ return checkHandShake(msg, this.infoHash); }
+	public boolean checkHandShake(byte[] packet, byte[] infoHash){ return checkHandShake(new MsgHandShake(packet), infoHash); }
+	public static boolean checkHandShake(MsgHandShake msg, byte[] infoHash){
+		// verify handshake msg.infoHash == infoHash
+		return Arrays.equals(msg.infoHash, infoHash);
+	}
+
+	// @todo create metodos for verify extensions
+
+	public int length(){
+		// <1 Byte Identifilter Protocol>< X bytes Protocol><8 Bytes Extensions Protocol><X Bytes info_hash><X Bytes Peer ID>
+		return 1 + PROTOCOL.length + 8 + infoHash.length + peerId.length;
+	}
+
+
+	// <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
+	@Override
+	public byte[] toPacket() {
+		int index = 0;
+		byte[] handshake = new byte[68];
+
+		// <Identifilter Protocol> 0x13 19	DCN-MEAS	DCN Measurement Subsystems Wikipedia: https://en.wikipedia.org/wiki/List_of_IP_protocol_numbers
+		handshake[index] = 0x13;
+		index++;
+
+		//<Protocol>
+		System.arraycopy(PROTOCOL, 0, handshake, index, PROTOCOL.length);
+		index += PROTOCOL.length;
+
+		// <Extensions Protocol> 00000000 - no extension
+		System.arraycopy(new byte[8], 0, handshake, index, 8);
+		index += 8;
+
+		// <info_hash>
+		System.arraycopy(infoHash, 0, handshake, index, infoHash.length);
+		index += infoHash.length;
+
+		// <Peer ID>
+		System.arraycopy(peerId, 0, handshake, index, peerId.length);
+
+		return handshake;
+	}
+
+	// <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
+	@Override
+	public void of(byte[] packet) {
 		if(packet.length != 68 ) throw new HandShakeInvalidException("Diferente de 68 handshake");
 
 		int index = 0;
@@ -84,50 +137,6 @@ public class MsgHandShake implements Msg{
 		System.arraycopy(packet, index, this.peerId, 0, 20);
 
 		this.clientType = ClientTorrentType.fromPeerId(this.peerId);
-
-	}
-
-	public boolean checkHandShake(byte[] packet){ return checkHandShake(packet, this.infoHash);	}
-	public boolean checkHandShake(MsgHandShake msg){ return checkHandShake(msg, this.infoHash); }
-	public boolean checkHandShake(byte[] packet, byte[] infoHash){ return checkHandShake(new MsgHandShake(packet), infoHash); }
-	public static boolean checkHandShake(MsgHandShake msg, byte[] infoHash){
-		// verify handshake msg.infoHash == infoHash
-		return Arrays.equals(msg.infoHash, infoHash);
-	}
-
-	// @todo create metodos for verify extensions
-
-	public int length(){
-		// <1 Byte Identifilter Protocol>< X bytes Protocol><8 Bytes Extensions Protocol><X Bytes info_hash><X Bytes Peer ID>
-		return 1 + PROTOCOL.length + 8 + infoHash.length + peerId.length;
-	}
-
-	// <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
-	@Override
-	public byte[] toPacket() {
-		int index = 0;
-		byte[] handshake = new byte[68];
-
-		// <Identifilter Protocol> 0x13 19	DCN-MEAS	DCN Measurement Subsystems Wikipedia: https://en.wikipedia.org/wiki/List_of_IP_protocol_numbers
-		handshake[index] = 0x13;
-		index++;
-
-		//<Protocol>
-		System.arraycopy(PROTOCOL, 0, handshake, index, PROTOCOL.length);
-		index += PROTOCOL.length;
-
-		// <Extensions Protocol> 00000000 - no extension
-		System.arraycopy(new byte[8], 0, handshake, index, 8);
-		index += 8;
-
-		// <info_hash>
-		System.arraycopy(infoHash, 0, handshake, index, infoHash.length);
-		index += infoHash.length;
-
-		// <Peer ID>
-		System.arraycopy(peerId, 0, handshake, index, peerId.length);
-
-		return handshake;
 	}
 
 	public ClientTorrentType getClientType() {	return clientType;	}
