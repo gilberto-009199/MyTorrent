@@ -1,6 +1,6 @@
-package org.voyager.torrent.client.limits;
+package org.voyager.torrent.client.network.limits;
 
-import org.voyager.torrent.client.messages.Msg;
+import org.voyager.torrent.client.network.messages.Msg;
 import org.voyager.torrent.client.peers.Peer;
 
 public class PeerLimit {

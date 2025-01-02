@@ -1,4 +1,4 @@
-package org.voyager.torrent.client.messages;
+package org.voyager.torrent.client.network.messages;
 
 public interface Msg{
 	byte[] toPacket();

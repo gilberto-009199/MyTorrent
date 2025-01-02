@@ -1,7 +1,7 @@
-package org.voyager.torrent.client.messages;
+package org.voyager.torrent.client.network.messages;
 
 import org.voyager.torrent.client.enums.ClientTorrentType;
-import org.voyager.torrent.client.exceptions.HandShakeInvalidException;
+import org.voyager.torrent.client.network.exceptions.HandShakeInvalidException;
 import org.voyager.torrent.util.BinaryUtil;
 
 import java.io.IOException;
