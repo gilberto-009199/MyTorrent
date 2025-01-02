@@ -1,10 +1,8 @@
 package org.voyager.torrent.client.builders;
 
-import org.voyager.torrent.client.ClientTorrent;
-import org.voyager.torrent.client.limits.BandWidthLimit;
-import org.voyager.torrent.client.limits.MsgLimit;
-import org.voyager.torrent.client.limits.PeerLimit;
-import org.voyager.torrent.client.messages.Msg;
+import org.voyager.torrent.client.net.limits.BandWidthLimit;
+import org.voyager.torrent.client.net.limits.MsgLimit;
+import org.voyager.torrent.client.net.limits.PeerLimit;
 
 public class PeerLimitBuilder {
 

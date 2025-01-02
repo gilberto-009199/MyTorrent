@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.voyager.torrent.client.peers.PeerNonBlock;
+import org.voyager.torrent.client.peers.BasicPeer;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.util.BinaryUtil;
 import org.voyager.torrent.util.HttpUtil;
@@ -18,17 +18,17 @@ import org.voyager.torrent.util.ReaderBencode;
 
 public class AnnounceRequestUtil {
 
-    public static Optional<List<PeerNonBlock>> requestAnnounce(Torrent torrent){
+    public static Optional<List<BasicPeer>> requestAnnounce(Torrent torrent){
         return requestAnnounce(torrent.getAnnounceURL(), torrent.genAnnounceParameters(), 0, 3);
     }
 
-    public static Optional<List<PeerNonBlock>> requestAnnounce(String announce, Map<String, String> parameters){
+    public static Optional<List<BasicPeer>> requestAnnounce(String announce, Map<String, String> parameters){
         return requestAnnounce(announce, parameters, 0, 3);
     }
 
-    public static Optional<List<PeerNonBlock>> requestAnnounce(String announce, Map<String, String> parameters, int retry, int limit){
+    public static Optional<List<BasicPeer>> requestAnnounce(String announce, Map<String, String> parameters, int retry, int limit){
 
-        List<PeerNonBlock> listPeer = new ArrayList<PeerNonBlock>();
+        List<BasicPeer> listPeer = new ArrayList<BasicPeer>();
 
         try{
             URL url_announce = new URL(announce+"?"+HttpUtil.getParamsString(parameters));
@@ -60,7 +60,7 @@ public class AnnounceRequestUtil {
                 }
                 
                 listPeer.add( 
-                    new PeerNonBlock()
+                    new BasicPeer()
                     .withHost(ip)
                     .withPort(peerPort)
                 ); 

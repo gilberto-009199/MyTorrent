@@ -36,7 +36,6 @@ public class ClientTorrentBuilder {
 					.withManagerFile(managerFile)
 					.withManagerPeer(managerPeer)
 					.withManagerAnnounce(managerAnnounce);
-
 	}
 
 	public static ClientTorrentBuilder of(String fileOrMagnetLink){

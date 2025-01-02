@@ -1,4 +1,4 @@
-package org.voyager.torrent.client.metrics;
+package org.voyager.torrent.client.net.metrics;
 
 public class MsgMetrics implements Comparable<MsgMetrics>{
 

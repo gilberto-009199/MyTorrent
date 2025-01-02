@@ -7,23 +7,20 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 import org.voyager.torrent.client.ClientTorrent;
-import org.voyager.torrent.client.messages.MsgBitfield;
-import org.voyager.torrent.client.messages.MsgCancel;
-import org.voyager.torrent.client.network.ChannelNetwork;
-import org.voyager.torrent.client.peers.Peer;
-import org.voyager.torrent.client.peers.PeerNonBlock;
-import org.voyager.torrent.client.exceptions.HandShakeInvalidException;
-import org.voyager.torrent.client.exceptions.NoReaderBufferException;
+import org.voyager.torrent.client.net.messages.MsgCancel;
+import org.voyager.torrent.client.net.socket.SocketChannelNetwork;
+import org.voyager.torrent.client.peers.BasicPeer;
+import org.voyager.torrent.client.net.exceptions.HandShakeInvalidException;
+import org.voyager.torrent.client.net.exceptions.NoReaderBufferException;
 import org.voyager.torrent.client.files.Torrent;
-import org.voyager.torrent.client.messages.MsgPiece;
-import org.voyager.torrent.client.messages.MsgRequest;
+import org.voyager.torrent.client.net.messages.MsgPiece;
+import org.voyager.torrent.client.net.messages.MsgRequest;
 
 public class BasicManagerPeer implements ManagerPeer{
 
@@ -35,13 +32,13 @@ public class BasicManagerPeer implements ManagerPeer{
 
     // IO non-blocker
     private Selector selector;
-    private Queue<PeerNonBlock> queueNewsPeer;
+    private Queue<BasicPeer> queueNewsPeer;
 
     // Recieve Msg
     private Queue<MsgPiece> queueRecieveMsgPiece;
     private Queue<MsgRequest> queueRecieveMsgRequest;
 
-    private Map<SocketChannel, PeerNonBlock> mapChannelAndPeer;
+    private Map<SocketChannel, BasicPeer> mapChannelAndPeer;
 
     public BasicManagerPeer(){
         this.mapChannelAndPeer      = new ConcurrentHashMap<>();
@@ -133,7 +130,7 @@ public class BasicManagerPeer implements ManagerPeer{
     public void handlerConnect(SelectionKey key) {
 
         SocketChannel channel = (SocketChannel) key.channel();
-        PeerNonBlock peer = mapChannelAndPeer.get(channel);
+        BasicPeer peer = mapChannelAndPeer.get(channel);
 
         System.out.println("handlerConnect: "+ peer);
 
@@ -164,7 +161,7 @@ public class BasicManagerPeer implements ManagerPeer{
     // Hook Selector handler for reading from channels
     public void handlerRead(SelectionKey key) throws IOException{
         SocketChannel channel = (SocketChannel) key.channel();
-        PeerNonBlock peer = mapChannelAndPeer.get(channel);
+        BasicPeer peer = mapChannelAndPeer.get(channel);
 
         boolean isReadable = channel.isConnected() && channel.isOpen();
         boolean notIsReadableThen = !isReadable;
@@ -203,7 +200,7 @@ public class BasicManagerPeer implements ManagerPeer{
     // Hook Selector handler for writing to channels
     public void handlerWrite(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
-        PeerNonBlock peer = mapChannelAndPeer.get(channel);
+        BasicPeer peer = mapChannelAndPeer.get(channel);
 
         boolean isWritable = channel.isConnected() && channel.isOpen();
         boolean notIsWritableThen = !isWritable;
@@ -213,10 +210,10 @@ public class BasicManagerPeer implements ManagerPeer{
 
         try {
             
-            if(peer.isConnected() && !peer.hasHandshake()){
+            if(peer.isConnected() && !peer.hasHandShake()){
                 peer.writeShake();
             }
-            if(peer.hasHandshake() && !peer.hasChoked()){
+            if(peer.hasHandShake() && !peer.hasChoked()){
                 peer.processQueueNewMsg();
             }
 
@@ -239,14 +236,14 @@ public class BasicManagerPeer implements ManagerPeer{
         List<MsgRequest> listMsgRequest = managerFile.msgRequest();
 
         //  peers for sort metrics
-        List<PeerNonBlock> listPeer = mapChannelAndPeer.values().stream()
+        List<BasicPeer> listPeer = mapChannelAndPeer.values().stream()
                                                                 .sorted(Collections.reverseOrder())
                                                                 .collect(Collectors.toList());
 
 
         List<MsgRequest> listMsgRequestInPeer = new ArrayList<>();
 
-        for (PeerNonBlock peerNonBlock : listPeer) {
+        for (BasicPeer peerNonBlock : listPeer) {
             if(!peerNonBlock.isConnected) continue;
             if(!peerNonBlock.hasHandshake) continue;
 
@@ -291,7 +288,7 @@ public class BasicManagerPeer implements ManagerPeer{
     private void processQueueNewsPeer(){
         while(!queueNewsPeer.isEmpty()){
 
-            PeerNonBlock peer = queueNewsPeer.poll();
+            BasicPeer peer = queueNewsPeer.poll();
 
             try{
 
@@ -303,7 +300,7 @@ public class BasicManagerPeer implements ManagerPeer{
                 channel.socket().setSoTimeout(30000);
                 channel.register(selector, SelectionKey.OP_CONNECT);
 
-                peer.withNetwork( new ChannelNetwork(channel) )
+                peer.withNetwork( new SocketChannelNetwork(channel) )
                     .withManagerPeer(this);
 
                 mapChannelAndPeer.put(channel, peer);
@@ -319,19 +316,19 @@ public class BasicManagerPeer implements ManagerPeer{
 
     // Hooks Queue's
     //  Queue New Peers from ManagerAnnounce
-    public synchronized void queueNewsPeer(PeerNonBlock peer) { queueNewsPeer.add(peer); }
-    public synchronized void queueNewsPeerIfNotPresent(PeerNonBlock peer) { 
+    public synchronized void queueNewsPeer(BasicPeer peer) { queueNewsPeer.add(peer); }
+    public synchronized void queueNewsPeerIfNotPresent(BasicPeer peer) {
         boolean IfPresent = mapChannelAndPeer.containsValue(peer);
         if(!IfPresent)queueNewsPeer(peer);
     }
 
     //  Queue New Msg from Peers
     @Override
-    public void queueNewMsg(PeerNonBlock peer, MsgRequest msg) { queueRecieveMsgRequest.add(msg); }
+    public void queueNewMsg(BasicPeer peer, MsgRequest msg) { queueRecieveMsgRequest.add(msg); }
     @Override
-    public void queueNewMsg(PeerNonBlock peer, MsgPiece msg) {
+    public void queueNewMsg(BasicPeer peer, MsgPiece msg) {
         queueRecieveMsgPiece.add(msg);
-        for(PeerNonBlock peerSend : mapChannelAndPeer.values()){
+        for(BasicPeer peerSend : mapChannelAndPeer.values()){
             if(!peerSend.equals(peer)){
                 peerSend.queueNewMsg(new MsgCancel(msg.getPosition(), msg.getBegin(), msg.getEnd()));
             }

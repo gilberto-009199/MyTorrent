@@ -12,8 +12,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.voyager.torrent.client.ClientTorrent;
 import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.files.Torrent;
-import org.voyager.torrent.client.messages.MsgPiece;
-import org.voyager.torrent.client.messages.MsgRequest;
+import org.voyager.torrent.client.net.messages.MsgPiece;
+import org.voyager.torrent.client.net.messages.MsgRequest;
 import org.voyager.torrent.client.util.FileTorrentUtil;
 import org.voyager.torrent.util.FileUtil;
 

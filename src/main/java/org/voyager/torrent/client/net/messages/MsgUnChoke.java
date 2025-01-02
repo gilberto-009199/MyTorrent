@@ -1,4 +1,6 @@
-package org.voyager.torrent.client.network.messages;
+package org.voyager.torrent.client.net.messages;
+
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /* @doc:
         https://wiki.theory.org/BitTorrentSpecification#Messages
@@ -22,6 +24,11 @@ public class MsgUnChoke implements Msg{
 				// <id=0>
 				ID
 		};
+	}
+
+	@Override
+	public void of(byte[] packet) {
+		throw new NotImplementedException();
 	}
 
 	@Override

@@ -1,5 +1,7 @@
-package org.voyager.torrent.client.network.messages;
+package org.voyager.torrent.client.net.messages;
 
+
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /* @doc:
         https://wiki.theory.org/BitTorrentSpecification#Messages
@@ -51,6 +53,12 @@ public class MsgPort implements Msg{
 				(byte)(port)
 		};
 	}
+
+	@Override
+	public void of(byte[] packet) {
+		throw new NotImplementedException();
+	}
+
 	@Override
 	public int getID(){ return ID; }
 

@@ -1,6 +1,6 @@
-package org.voyager.torrent.client.network.limits;
+package org.voyager.torrent.client.net.limits;
 
-import org.voyager.torrent.client.network.messages.Msg;
+import org.voyager.torrent.client.net.messages.Msg;
 
 import java.util.concurrent.atomic.AtomicLong;
 
