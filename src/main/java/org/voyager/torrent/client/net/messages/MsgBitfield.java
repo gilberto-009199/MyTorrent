@@ -65,6 +65,8 @@ public class MsgBitfield implements Msg{
 	@Override
 	public int getID(){ return ID; }
 
+	public PiecesMap map(){return this.map;}
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) return true;

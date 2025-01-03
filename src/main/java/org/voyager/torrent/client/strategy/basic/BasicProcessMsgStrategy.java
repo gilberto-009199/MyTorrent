@@ -13,7 +13,7 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	@Override
 	public void hookReceive(Peer peer, Msg msg) {
 
-		if(peer.network().isRedable())return;
+		if(peer.network().isReadable())return;
 
 		BandWidthMetrics bandMetric = peer.statePeer().metrics().bandWidthMetrics;
 		MsgMetrics msgMetric = peer.statePeer().metrics().msgMetrics;
@@ -38,12 +38,24 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	public void hookReceive(Peer peer, MsgHandShake msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgHandShake++;
+
+		boolean handShakeValid = MsgHandShake.checkHandShake( msg, peer.infoLocal().infoHash());
+		if(handShakeValid){
+			peer.statePeer().setConnected(true);
+			peer.statePeer().setHandshake(true);
+			peer.infoRemote()
+					.setPeerId(msg.getPeerId())
+					.setInfoHash(msg.getInfoHash())
+					.setClientType(msg.getClientType());
+		}
 	}
 
 	@Override
 	public void hookReceive(Peer peer, MsgChoke msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgChoke++;
+
+		peer.statePeer().setChoked(true);
 	}
 
 	@Override
@@ -51,6 +63,7 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgUnChoke++;
 
+		peer.statePeer().setChoked(false);
 	}
 
 	@Override
@@ -63,6 +76,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	public void hookReceive(Peer peer, MsgBitfield msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgBitfield++;
+
+		peer.statePeer().setPiecesMap(msg.map());
 	}
 
 	@Override
@@ -71,16 +86,20 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 		metric.countMsgCancel++;
 	}
 
-
 	@Override
 	public void hookReceive(Peer peer, MsgInterested msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgInterest++;
+
+		peer.statePeer().setInterest(true);
 	}
+
 	@Override
 	public void hookReceive(Peer peer, MsgNotInterested msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgNotInterest++;
+
+		peer.statePeer().setInterest(false);
 	}
 
 
@@ -94,7 +113,6 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	public void hookReceive(Peer peer, MsgHave msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgHave++;
-
 	}
 
 	@Override
@@ -119,40 +137,168 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 		else if(msg instanceof  MsgHandShake)hookSend(peer, (MsgHandShake) msg);
 		else if(msg instanceof  MsgInterested)hookSend(peer, (MsgInterested) msg);
 		else if(msg instanceof  MsgNotInterested)hookSend(peer, (MsgNotInterested) msg);
-		else peer.network().write(msg).orElseThrow(null);
+		else peer.network().queueWriter(msg);
 
 	}
 
 	@Override
 	public void hookSend(Peer peer, MsgHandShake msg) {
-		Network net = peer.network();
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgHandShake++;
 
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+			if(!result.success())return;
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgChoke msg) {	}
+	public void hookSend(Peer peer, MsgChoke msg) {
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgChoke++;
+
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
+	}
 
 	@Override
-	public void hookSend(Peer peer, MsgUnChoke msg) {	}
+	public void hookSend(Peer peer, MsgUnChoke msg) {
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgUnChoke++;
+
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
+	}
 
 	@Override
-	public void hookSend(Peer peer, MsgRequest msg) {	}
+	public void hookSend(Peer peer, MsgRequest msg) {
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgRequest++;
+
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
+	}
 
 	@Override
-	public void hookSend(Peer peer, MsgBitfield msg) {	}
+	public void hookSend(Peer peer, MsgBitfield msg) {
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgBitfield++;
+
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
+	}
 
 	@Override
-	public void hookSend(Peer peer, MsgCancel msg) {	}
+	public void hookSend(Peer peer, MsgCancel msg) {
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgCancel++;
+
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
+	}
 
 	@Override
-	public void hookSend(Peer peer, MsgNotInterested msg) {	}
+	public void hookSend(Peer peer, MsgNotInterested msg) {
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgNotInterest++;
+
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
+	}
 
 	@Override
-	public void hookSend(Peer peer, MsgInterested msg) {	}
+	public void hookSend(Peer peer, MsgInterested msg) {
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgInterest++;
+
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
+	}
 
 	@Override
-	public void hookSend(Peer peer, MsgPort msg) {	}
+	public void hookSend(Peer peer, MsgPort msg) {
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgPort++;
+
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
+	}
 
 	@Override
-	public void hookSend(Peer peer, MsgHave msg) {	}
+	public void hookSend(Peer peer, MsgHave msg) {
+		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
+		metric.countMsgHave++;
+
+		peer.network()
+		.queueWriter(msg)
+		.doOnSuccess(result -> {
+
+
+		}).doOnError(ex ->{
+
+
+		}).subscribe();
+	}
 }

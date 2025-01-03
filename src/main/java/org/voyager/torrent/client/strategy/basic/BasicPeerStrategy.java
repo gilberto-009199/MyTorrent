@@ -2,13 +2,13 @@ package org.voyager.torrent.client.strategy.basic;
 
 import org.voyager.torrent.client.net.messages.Msg;
 import org.voyager.torrent.client.net.messages.MsgHandShake;
+import org.voyager.torrent.client.net.socket.NetworkResult;
 import org.voyager.torrent.client.peers.Peer;
 import org.voyager.torrent.client.strategy.PeerStrategy;
 import org.voyager.torrent.client.strategy.ProcessMsgStrategy;
 
 import java.io.IOException;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 public class BasicPeerStrategy implements PeerStrategy {
 
@@ -22,34 +22,48 @@ public class BasicPeerStrategy implements PeerStrategy {
 
 	@Override
 	public void hookRead(Peer peer) throws IOException {
-		if(!peer.network().isRedable())return;
+		if(!peer.network().isReadable())return;
+
+		peer.network().nextRead();
+
 		if(!peer.statePeer().handshake()){
 			readMsgHandShake(peer);
 			return;
 		}
 
-		Optional<Msg> optMsg = peer.network().readMsg();
+		Optional<NetworkResult> optMsg = peer.network().queueReader();
 
 		boolean notPresentThen = !optMsg.isPresent();
 		if(notPresentThen)return;
 
-		Msg msg = optMsg.get();
+		optMsg.ifPresent(result ->{
 
-		processMsgStrategy.hookReceive(peer, msg);
+			if(result.success()) processMsgStrategy.hookReceive(peer, result.msg());
+
+		});
+
 	}
 
 	@Override
 	public void hookWrite(Peer peer) {
+
 		if(!peer.network().isWritable())return;
+
+		peer.network().nextWrite();
+
 		if(!peer.statePeer().handshake()){
 			writeMsgHandShake(peer);
 			return;
 		}
 
+
 		// process queue
-		for(Msg msg: peer.statePeer().queueWriter()){
-			processMsgStrategy.hookSend(peer, msg);
-		}
+		// logic
+		//  verify keep alive and send keep alive 2s
+		//for(Msg msg: peer.statePeer().queueWriter()){
+		//	processMsgStrategy.hookSend(peer, msg);
+		//}
+
 	}
 
 	// Writer MsgHandShake
@@ -66,14 +80,14 @@ public class BasicPeerStrategy implements PeerStrategy {
 	// Read MsgHandShake
 	private void readMsgHandShake(Peer peer) throws IOException {
 
-		MsgHandShake msg = new MsgHandShake();
 
-		boolean read = peer.network()
-				.read(msg)
-				.map( r -> r > 1)
-				.orElse(false);
 
-		if(!read)return;
+		NetworkResult result = peer.network().queueReader().get();
+
+		if(!result.success())return;
+		if(!(result.msg() instanceof MsgHandShake))return;
+
+		MsgHandShake msg = (MsgHandShake) result.msg();
 
 		peer.infoRemote().setPeerId(msg.getPeerId());
 		peer.infoRemote().setClientType(msg.getClientType());
