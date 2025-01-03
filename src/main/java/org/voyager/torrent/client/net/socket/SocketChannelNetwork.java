@@ -1,172 +1,164 @@
 package org.voyager.torrent.client.net.socket;
 
-import org.voyager.torrent.client.net.exceptions.NoReaderBufferException;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleEmitter;
 import org.voyager.torrent.client.net.messages.*;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.SocketChannel;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Map.Entry;
+
 import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SocketChannelNetwork implements Network {
 
 	private SocketChannel socketChannel;
 
+	// Writter
+	private Queue<Entry<SingleEmitter<NetworkResult>, Msg>> queueMsgWriter = new ConcurrentLinkedQueue<>();
+	private Queue<Msg> queueMsgReader = new ConcurrentLinkedQueue<>();
+
+	private Entry<SingleEmitter<NetworkResult>, Msg> currentMsg;
+	private ByteBuffer currentBuffer;
+
 	public SocketChannelNetwork(SocketChannel socketChannel) {
 		this.socketChannel = socketChannel;
 	}
 
-	@Override
-	public boolean isRedable() {
-		return socketChannel != null && socketChannel.isConnected() && socketChannel.isOpen();
-	}
-
-	@Override
-	public boolean isWritable() {
-		return socketChannel != null && socketChannel.isConnected() && socketChannel.isOpen() && !socketChannel.isBlocking();
-	}
-
-	@Override
 	public boolean isOpen() {
 		return socketChannel != null && socketChannel.isOpen();
 	}
-git status
 	@Override
-	public NetworkResult write(ByteBuffer buffers){
-		if (!isWritable()) return Optional.of(0);
+	public boolean isReadable() { return isOpen() && socketChannel.isConnected(); }
+	@Override
+	public boolean isWritable() { return isOpen() && socketChannel.isConnected() && !socketChannel.isBlocking();}
+	@Override
+
+
+	public  void nextWrite() {
+		boolean noEmptyBufferAndNotRemaining = currentBuffer != null && !currentBuffer.hasRemaining();
+		boolean noEmptyQueue = !queueMsgWriter.isEmpty();
+
+		// Logic alter Msg in Writer buffer
+		if(!noEmptyBufferAndNotRemaining && noEmptyQueue){
+			currentMsg = queueMsgWriter.element();
+			currentBuffer = ByteBuffer.wrap( currentMsg.getValue().toPacket() );
+		}
+
+		if(currentBuffer == null)return;
+
+		SingleEmitter<NetworkResult> emitter = currentMsg.getKey();
 
 		try{
 
-			int byteRead =  socketChannel.write(buffers);
+			int bytesRead = socketChannel.write(currentBuffer);
 
-			return Optional.of(byteRead);
+			if(bytesRead < 0){
+				queueMsgWriter.remove(currentMsg);
+				currentMsg		= null;
+				currentBuffer 	= null;
+				emitter.onError(new NonWritableChannelException());
+			}
 
-		}catch (Exception e){ e.printStackTrace(); }
+		}catch (IOException ex){
+			queueMsgWriter.remove(currentMsg);
+			currentMsg		= null;
+			currentBuffer 	= null;
+			emitter.onError( ex );
+		}
 
-		return Optional.of(0);
+		if(!currentBuffer.hasRemaining()) {
+			emitter.onSuccess(null);
+			currentMsg		= null;
+			currentBuffer 	= null;
+		}
+
 	}
 
-	public NetworkResult write(Msg msg){
-		if (!isWritable()) return Optional.of(0);
-
-		try{
-
-			ByteBuffer byteBuffer = ByteBuffer.wrap(msg.toPacket());
-
-			int byteRead =  socketChannel.write(byteBuffer);
-
-			return Optional.of(byteRead);
-
-		}catch (Exception e){ e.printStackTrace(); }
-
-		return Optional.of(0);
-	}
-
-	@Override
-	public NetworkResult write(byte[] buffer){
-
-		if (!isWritable()) return Optional.of(0);
-
-		try{
-
-			ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
-
-			int byteRead =  socketChannel.write(byteBuffer);
-
-			return Optional.of(byteRead);
-
-		}catch (Exception e){ e.printStackTrace(); }
-
-		return Optional.of(0);
-	}
-
-	@Override
-	public Optional<Integer> read(ByteBuffer buffers){
-		if (!isRedable()) return Optional.of(0);
-
-		try {
-
-			int bytesRead = (int) socketChannel.read(buffers);
-
-			if (bytesRead == -1) closeConnection();
-
-			return Optional.of(bytesRead);
-
-		} catch (Exception e){ e.printStackTrace(); }
-
-		return Optional.of(0);
-	}
-
-	@Override
-	public NetworkResult read(byte[] buffer){
-
-		if (!isRedable())return Optional.of(0);
-
-		try {
-			ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
-
-			int bytesRead = socketChannel.read(byteBuffer);
-
-			if (bytesRead == -1) closeConnection();
-
-			return Optional.of(bytesRead);
-
-		} catch (Exception e){}
-
-		return Optional.of(0);
-	}
-
-	public NetworkResult readMsg(){
-		if (!isRedable()) return null;
+	public void nextRead() {
+		if (!isReadable()) return;
 
 		// <4 bytes> for length, <1 byte> for ID message
-		ByteBuffer metadataBuffer = ByteBuffer.allocate(4);
+		try {
 
-		int bytesRead = read(metadataBuffer).get();
+			ByteBuffer metadataBuffer = ByteBuffer.allocate(4);
 
-		boolean closeConnected		= bytesRead == -1;
-		boolean emptyBuffer			= bytesRead ==  0;
+			int bytesRead = socketChannel.read(metadataBuffer);
 
-		if(closeConnected) closeConnection();
-		if(closeConnected || emptyBuffer){
-			return Optional.empty();
-		}
+			boolean closeConnected = bytesRead == -1;
+			boolean emptyBuffer = bytesRead == 0;
 
-		((Buffer) metadataBuffer).flip();
+			if (closeConnected) closeConnection();
+			if (closeConnected || emptyBuffer) return;
 
-		int length = metadataBuffer.getInt();
-		boolean isKeepAlive = length == 0;
-		if(isKeepAlive){
-			return Optional.empty();
-		}
+			((Buffer) metadataBuffer).flip();
 
-		ByteBuffer contentBuffer = ByteBuffer.allocate(length);
+			int length = metadataBuffer.getInt();
 
-		readFull(contentBuffer);
+			boolean isKeepAlive = length == 0;
 
-		((Buffer) contentBuffer).flip();
+			if (isKeepAlive) return;
 
-		byte id = contentBuffer.get();
+			ByteBuffer contentBuffer = ByteBuffer.allocate(length);
 
-		System.out.println("Receive: [len: "+ length +", id: "+ id +"] from "+ this);
+			readFull(contentBuffer)
+			.doOnSuccess(content -> {
 
-		return readMsg(id, contentBuffer);
+				((Buffer) contentBuffer).flip();
+
+				byte id = content.get();
+
+				queueMsg(id, contentBuffer);
+
+			})
+			.doOnError(error -> {
+				System.err.println("Erro: " + error.getMessage());
+			})
+			.subscribe();
+
+		} catch (Exception ex) {	}
+
 	}
 
-	private NetworkResult readMsg(byte id, ByteBuffer content){
+	@Override
+	public  Single<NetworkResult> queueWriter(Msg msg) {
+		return Single.create(emitter -> {
+			queueMsgWriter.add(new SimpleEntry<>(emitter, msg));
+		});
+	}
+
+	@Override
+	public Optional<NetworkResult> queueReader() {
+
+		if (queueMsgReader.isEmpty()) return Optional.empty();
+
+		NetworkResult result = new NetworkResult(queueMsgReader.peek()).setSuccess(true);
+
+		return Optional.of(result);
+
+	}
+
+	private void queueMsg(byte id, ByteBuffer content){
+		System.out.println("Receive: [len: " + content.capacity() + ", id: " + id + "]");
 
 		switch (id) {
-			case MsgHave.ID:			return Optional.of( new MsgHave() );
-			case MsgPort.ID: 			return Optional.of( new MsgPort(content.array()));
-			case MsgChoke.ID:			return Optional.of( new MsgChoke());
-			case MsgCancel.ID: 			return Optional.of( new MsgCancel());
-			case MsgUnChoke.ID:			return Optional.of( new MsgUnChoke());
-			case MsgInterested.ID: 		return Optional.of( new MsgInterested());
-			case MsgNotInterested.ID: 	return Optional.of( new MsgNotInterested());
-			case MsgPiece.ID: 			return Optional.of( new MsgPiece(content.array()));
-			case MsgRequest.ID: 		return Optional.of( new MsgRequest(content.array()));
-			case MsgBitfield.ID: 		return Optional.of( new MsgBitfield(content.array()) );
+			case MsgHave.ID:			queueMsgReader.add( new MsgHave());						break;
+			case MsgPort.ID: 			queueMsgReader.add( new MsgPort(content.array()));		break;
+			case MsgChoke.ID:			queueMsgReader.add( new MsgChoke());					break;
+			case MsgCancel.ID: 			queueMsgReader.add( new MsgCancel());					break;
+			case MsgUnChoke.ID:			queueMsgReader.add( new MsgUnChoke());					break;
+			case MsgInterested.ID: 		queueMsgReader.add( new MsgInterested());				break;
+			case MsgNotInterested.ID: 	queueMsgReader.add( new MsgNotInterested());			break;
+			case MsgPiece.ID: 			queueMsgReader.add( new MsgPiece(content.array()));		break;
+			case MsgRequest.ID: 		queueMsgReader.add( new MsgRequest(content.array()));	break;
+			case MsgBitfield.ID: 		queueMsgReader.add( new MsgBitfield(content.array()));	break;
 
 			default:
 				System.out.printf("### Error message state: %d%n ###", (int) id);
@@ -174,78 +166,34 @@ git status
 				System.out.println("\n### Final unknown message. ###");
 		}
 
-		return Optional.empty();
 	}
 
-	@Override
-	public NetworkResult read(MsgHandShake msg){
 
-		try {
+	public Single<ByteBuffer> readFull(ByteBuffer contentBuffer) {
+		return Single.create(emitter -> {
+			try {
+				while (contentBuffer.hasRemaining()) {
+					int bytesRead = socketChannel.read(contentBuffer);
 
+					if (bytesRead == -1) {
+						emitter.onError(new EOFException("SocketChannel was closed before reading the full buffer."));
+						return;
+					}
 
-			if (!isRedable()) return Optional.of(0);
+					if (bytesRead == 0) {
+						Thread.yield();
+					}
+				}
 
-			ByteBuffer byteBuffer = ByteBuffer.allocate(68);
-			int bytesRead = socketChannel.read(byteBuffer);
+				// A leitura foi completada com sucesso.
+				emitter.onSuccess(contentBuffer);
 
-			boolean closeConnected		= bytesRead == -1;
-			boolean emptyBuffer			= bytesRead ==  0;
-			boolean sizeBufferIncorrect	= bytesRead != 68;
-
-			if(closeConnected) closeConnection();
-
-			if(closeConnected || emptyBuffer || sizeBufferIncorrect) return Optional.of(0);
-
-			((Buffer) byteBuffer).flip();
-			msg.of(byteBuffer.array());
-
-		}catch (Exception e){ return Optional.of(0); }
-
-		return Optional.of(1);
-	}
-
-	@Override
-	public NetworkResult read(int bytes){
-		if (!isRedable()) {
-			return Optional.of(0);
-		}
-
-		try {
-
-			ByteBuffer byteBuffer = ByteBuffer.allocate(bytes);
-			int bytesRead = socketChannel.read(byteBuffer);
-			if (bytesRead == -1) {
-				closeConnection();
-			} else if (bytesRead == 0) {
-				return 0; // Nada para ler no momento
+			} catch (IOException e) {
+				// Notifica erro ao emitter.
+				emitter.onError(e);
 			}
-			((Buffer) byteBuffer).flip();
-
-			return Optional.of(bytesRead);
-
-		}catch (Exception e){}
-
-		return Optional.of(0);
+		});
 	}
-
-	@Override
-	public NetworkResult readFull(ByteBuffer buffer){
-		if (!isRedable()) {
-			throw new IOException("SocketChannel is not readable or not connected.");
-		}
-		int totalBytesRead = 0;
-		while (buffer.hasRemaining()) {
-			int bytesRead = socketChannel.read(buffer);
-			if (bytesRead == -1) {
-				closeConnection();
-				System.out.println("Connection closed by peer while reading message.");
-				return -1;
-			}
-			totalBytesRead += bytesRead;
-		}
-		return totalBytesRead;
-	}
-
 
 	private void closeConnection() {
 		try{

@@ -2,10 +2,14 @@ package org.voyager.torrent.client.net.socket;
 
 import org.voyager.torrent.client.net.messages.Msg;
 
+import java.awt.event.ActionListener;
+import java.util.concurrent.CompletableFuture;
+
 public class NetworkResult {
 
 	private boolean success;
 	private byte[] buffer;
+
 	private Msg msg;
 
 	public NetworkResult(boolean success){ this.success = success;	}
