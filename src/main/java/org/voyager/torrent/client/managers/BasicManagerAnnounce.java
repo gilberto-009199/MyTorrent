@@ -40,7 +40,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
 
         while(!isInterrupted()){
             try{
-                client.semaphoreExecutor().acquire();
+                client.state().semaphoreExecutor().acquire();
                 System.out.println("++++++ ManagerAnounce ++++");
 
                 process();
@@ -48,7 +48,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
                 System.out.println("------ ManagerAnounce ----");
-                client.semaphoreExecutor().release();
+                client.state().semaphoreExecutor().release();
             }
 
             int timeLoop = Math.min(timeReAnnounceInSecond, timeVerifyNewsPeersInSecond) * 1000;
@@ -70,7 +70,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
         if((currentTime - lastAnnounceTime) >= timeReAnnounceInSecond * 1000) {
 
             List<InfoPeer> listInfoPeer = AnnounceRequestUtil
-                    .requestAnnounce(client.torrent())
+                    .requestAnnounce(client.state().torrent())
                     .orElse(new ArrayList<>(0));
 
             strategy.hookNewListInfoPeer(this, listInfoPeer);

@@ -112,6 +112,7 @@ public class ClientTorrent{
 		state.setSemaphoreExecutor(null);
     }
 
+	public StateClientTorrent state() { return state; }
 
 	public ManagerFile managerFile() { return managerFile;	}
 	public ClientTorrent setManagerFile(ManagerFile managerFile) {
