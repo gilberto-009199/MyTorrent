@@ -39,4 +39,14 @@ public class StatePeer {
 
 	public PeerLimit limits() { return limits; }
 	public void setLimits(PeerLimit limits) { this.limits = limits; }
+
+	public String toString() {
+		return "StatePeer[" +
+				"handshake: "+   handshake +
+				", connected: "+ connected +
+				", interest: "+  interest  +
+				", choked:" +    choked    +
+				", piecesMap: [" + piecesMap +"]"+
+				"]";
+	}
 }

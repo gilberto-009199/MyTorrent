@@ -11,7 +11,8 @@ import org.voyager.torrent.client.strategy.ProcessMsgStrategy;
 public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 
 	@Override
-	public void hookReceive(Peer peer, Msg msg) {
+	public void hookReceive(Peer peer,
+							Msg msg) {
 
 		if(peer.network().isReadable())return;
 
@@ -35,7 +36,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookReceive(Peer peer, MsgHandShake msg) {
+	public void hookReceive(Peer peer,
+							MsgHandShake msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgHandShake++;
 
@@ -51,7 +53,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookReceive(Peer peer, MsgChoke msg) {
+	public void hookReceive(Peer peer,
+							MsgChoke msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgChoke++;
 
@@ -59,7 +62,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookReceive(Peer peer, MsgUnChoke msg) {
+	public void hookReceive(Peer peer,
+							MsgUnChoke msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgUnChoke++;
 
@@ -67,13 +71,15 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookReceive(Peer peer, MsgRequest msg) {
+	public void hookReceive(Peer peer,
+							MsgRequest msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgRequest++;
 	}
 
 	@Override
-	public void hookReceive(Peer peer, MsgBitfield msg) {
+	public void hookReceive(Peer peer,
+							MsgBitfield msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgBitfield++;
 
@@ -81,13 +87,15 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookReceive(Peer peer, MsgCancel msg) {
+	public void hookReceive(Peer peer,
+							MsgCancel msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgCancel++;
 	}
 
 	@Override
-	public void hookReceive(Peer peer, MsgInterested msg) {
+	public void hookReceive(Peer peer,
+							MsgInterested msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgInterest++;
 
@@ -95,7 +103,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookReceive(Peer peer, MsgNotInterested msg) {
+	public void hookReceive(Peer peer,
+							MsgNotInterested msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgNotInterest++;
 
@@ -104,19 +113,22 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 
 
 	@Override
-	public void hookReceive(Peer peer, MsgPort msg) {
+	public void hookReceive(Peer peer,
+							MsgPort msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgPort++;
 	}
 
 	@Override
-	public void hookReceive(Peer peer, MsgHave msg) {
+	public void hookReceive(Peer peer,
+							MsgHave msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgHave++;
 	}
 
 	@Override
-	public void hookSend(Peer peer, Msg msg) {
+	public void hookSend(Peer peer,
+						 Msg msg) {
 
 		if(peer.network().isWritable())return;
 
@@ -142,7 +154,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgHandShake msg) {
+	public void hookSend(Peer peer,
+						 MsgHandShake msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgHandShake++;
 
@@ -159,7 +172,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgChoke msg) {
+	public void hookSend(Peer peer,
+						 MsgChoke msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgChoke++;
 
@@ -175,7 +189,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgUnChoke msg) {
+	public void hookSend(Peer peer,
+						 MsgUnChoke msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgUnChoke++;
 
@@ -191,7 +206,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgRequest msg) {
+	public void hookSend(Peer peer,
+						 MsgRequest msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgRequest++;
 
@@ -207,7 +223,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgBitfield msg) {
+	public void hookSend(Peer peer,
+						 MsgBitfield msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgBitfield++;
 
@@ -223,7 +240,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgCancel msg) {
+	public void hookSend(Peer peer,
+						 MsgCancel msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgCancel++;
 
@@ -239,7 +257,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgNotInterested msg) {
+	public void hookSend(Peer peer,
+						 MsgNotInterested msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgNotInterest++;
 
@@ -255,7 +274,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgInterested msg) {
+	public void hookSend(Peer peer,
+						 MsgInterested msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgInterest++;
 
@@ -271,7 +291,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgPort msg) {
+	public void hookSend(Peer peer,
+						 MsgPort msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgPort++;
 
@@ -287,7 +308,8 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer, MsgHave msg) {
+	public void hookSend(Peer peer,
+						 MsgHave msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgHave++;
 

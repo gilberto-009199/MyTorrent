@@ -51,19 +51,25 @@ public class Torrent {
         return genAnnounceParameters(peerId, port, uploaded, downloaded);
     }
 
-    public Map<String, String> genAnnounceParameters(String peerId, int port){
+    public Map<String, String> genAnnounceParameters(String peerId,
+                                                     int port){
         int uploaded    = 0,
             downloaded  = 0;
         
         return genAnnounceParameters(peerId, port, uploaded, downloaded);
     }
 
-    public Map<String, String> genAnnounceParameters(String peerId, int port, int uploaded){
+    public Map<String, String> genAnnounceParameters(String peerId,
+                                                     int port,
+                                                     int uploaded){
         int downloaded  = 0;
         return genAnnounceParameters(peerId, port, uploaded, downloaded);
     }
 
-    public Map<String, String> genAnnounceParameters(String peerId, int port, int uploaded, int downloaded){
+    public Map<String, String> genAnnounceParameters(String peerId,
+                                                     int port,
+                                                     int uploaded,
+                                                     int downloaded){
         Map<String, String> parameters = new HashMap<String, String>();
 
         parameters.put("info_hash",     HttpUtil.toHexString(infoHash));

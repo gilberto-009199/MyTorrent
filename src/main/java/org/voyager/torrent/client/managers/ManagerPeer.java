@@ -7,33 +7,13 @@ import org.voyager.torrent.client.peers.BasicPeer;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.net.messages.MsgPiece;
 import org.voyager.torrent.client.net.messages.MsgRequest;
+import org.voyager.torrent.client.peers.InfoPeer;
+import org.voyager.torrent.client.peers.Peer;
 
 
-public interface ManagerPeer extends Runnable {
+public interface ManagerPeer extends Manager {
 
-	// Actions
-	void queueNewMsg(BasicPeer peer, MsgRequest msg);
-	void queueNewMsg(BasicPeer peer, MsgPiece msg);
-	void queueNewsPeer(BasicPeer peer);
-	void queueNewsPeerIfNotPresent(BasicPeer peer);
-
-	// Hooks
-	boolean connectError(Peer peer);
-	boolean shakeHandsError(Peer peer);
-	boolean downloaded(Peer peer);
-	boolean uploaded(Peer peer);
-	void addInterestPeer(Peer peer);
-	void removeInterestPeer(Peer peer);
-
-	// Getters
-	Torrent getTorrent();
-	ManagerFile getManagerFile();
-
-	// Withs
-	ManagerPeer withTorrent(Torrent torrent);
-	ManagerPeer withManagerFile(ManagerFile managerFile);
-	ManagerPeer withClientTorrent(ClientTorrent clientTorrent);
-	ManagerPeer withSemaphoreExecutor(Semaphore semaphoreExecutor);
-	ManagerPeer withManagerAnnounce( ManagerAnnounce managerAnnounce);
+	ClientTorrent client();
+	ManagerPeer setClient(ClientTorrent client);
 
 }

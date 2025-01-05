@@ -1,13 +1,15 @@
 package org.voyager.torrent.client.peers;
 
+import org.voyager.torrent.client.managers.ManagerPeer;
 import org.voyager.torrent.client.net.socket.Network;
 import org.voyager.torrent.client.strategy.PeerStrategy;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 // @todo no futuro criar uma unica e grande fila aonde os pares seriam chamados por um invocador
 public class BasicPeer implements Peer{
+
+	private ManagerPeer managerPeer;
 
 	// Info
 	private InfoPeer infoRemote;
@@ -60,6 +62,22 @@ public class BasicPeer implements Peer{
 
 	@Override
 	public Network network() { return this.network;	}
+	public Peer setNetwork(Network network){
+		this.network = network;
+		return this;
+	}
+
+	public ManagerPeer managerPeer() { return managerPeer;	}
+	public BasicPeer setManagerPeer(ManagerPeer managerPeer) {
+		this.managerPeer = managerPeer;
+		return this;
+	}
+
+	public PeerStrategy strategy() { return strategy; }
+	public BasicPeer setStrategy(PeerStrategy strategy) {
+		this.strategy = strategy;
+		return this;
+	}
 
 	@Override
 	public boolean equals(Object obj) {
@@ -96,12 +114,10 @@ public class BasicPeer implements Peer{
 	}
 
 	public String toString() {
-		return "PeerNonBlock[host: "+ infoLocal.host() +
-				", port: "+ infoLocal.port() +
-				", connect: "+ state.connected() +
-				", hasHandshake: "+ state.handshake() +
-				", clientType: "+ infoRemote.clientType() +
-				", Map: "+ state.piecesMap() +"]";
+		return "BasicPeer[" +
+				"infoLocal: "+		infoLocal +
+				", infoRemote: "+	infoRemote +
+				", state: "+ 		state + "]";
 	}
 
 

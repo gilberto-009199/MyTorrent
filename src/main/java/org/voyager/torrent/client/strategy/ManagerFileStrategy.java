@@ -1,3 +1,3 @@
 package org.voyager.torrent.client.strategy;
 
-public interface ManagerFileStrategy {}
+public interface ManagerFileStrategy extends Strategy{}

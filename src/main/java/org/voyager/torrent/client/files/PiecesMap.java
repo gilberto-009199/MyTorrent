@@ -26,12 +26,14 @@ public class PiecesMap {
         this.sizePiece  = torrent.piece_length;
     }
 
-    public PiecesMap(int countPieces, int sizePiece){
+    public PiecesMap(int countPieces,
+                     int sizePiece){
         this.map = new byte[countPieces];
         this.sizePiece = sizePiece;
     }
 
-    public PiecesMap(byte[] map, int sizePiece){
+    public PiecesMap(byte[] map,
+                     int sizePiece){
         this.map = map;
         this.sizePiece = sizePiece;
     }

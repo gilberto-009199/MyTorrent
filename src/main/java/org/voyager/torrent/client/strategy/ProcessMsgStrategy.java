@@ -3,7 +3,7 @@ package org.voyager.torrent.client.strategy;
 import org.voyager.torrent.client.net.messages.*;
 import org.voyager.torrent.client.peers.Peer;
 
-public interface ProcessMsgStrategy {
+public interface ProcessMsgStrategy extends Strategy{
 
 	void hookReceive(Peer peer, Msg msg);
 	void hookReceive(Peer peer, MsgHandShake msg);

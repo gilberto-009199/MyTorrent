@@ -1,3 +1,3 @@
 package org.voyager.torrent.client.strategy;
 
-public interface SelectorPieceStrategy {}
+public interface SelectorPieceStrategy extends Strategy{}

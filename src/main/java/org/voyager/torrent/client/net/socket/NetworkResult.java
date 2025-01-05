@@ -19,11 +19,14 @@ public class NetworkResult {
 		this.success = success;
 		this.buffer = buffer;
 	}
-	public NetworkResult(boolean success, Msg msg){
+	public NetworkResult(boolean success,
+						 Msg msg){
 		this.success = success;
 		this.msg = msg;
 	}
-	public NetworkResult(boolean success, byte[] buffer, Msg msg){
+	public NetworkResult(boolean success,
+						 byte[] buffer,
+						 Msg msg){
 		this.success = success;
 		this.buffer = buffer;
 		this.msg = msg;
