@@ -46,7 +46,7 @@ public class BasicManagerFile implements ManagerFile{
     public BasicManagerFile(ClientTorrent client){
         this();
         this.client                 = client;
-        this.torrent                = client.torrent();
+        this.torrent                = client.state().torrent();
         this.map                    = new PiecesMap(this.torrent);
         this.mapReceiveMsgPiece      = new HashMap<>(this.map.getMap().length);
     }
@@ -58,14 +58,14 @@ public class BasicManagerFile implements ManagerFile{
 
         while(!isInterrupted()){
             try {
-                client.semaphoreExecutor().acquire();
+                client.state().semaphoreExecutor().acquire();
                 System.out.println("++++++++ ManagerFile +++++++");
 
                 process();
 
             } catch (InterruptedException e) {Thread.currentThread().interrupt(); }
             finally {
-                client.semaphoreExecutor().release();
+                client.state().semaphoreExecutor().release();
             }
             System.out.println("-------- ManagerFile -------");
             sleep(1000);

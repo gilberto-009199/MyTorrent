@@ -2,9 +2,12 @@ package org.voyager.torrent.client;
 
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.peers.InfoPeer;
+import org.voyager.torrent.client.peers.Peer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
 public class StateClientTorrent {
@@ -13,10 +16,17 @@ public class StateClientTorrent {
 
 	private Torrent torrent;
 	private Semaphore semaphoreExecutor;
+
 	private List<InfoPeer> listInfoPeerRemote;
+	private Queue<Peer> queueNewsPeer;
 
-	public StateClientTorrent(ClientTorrent client){ this.client = client; }
+	public StateClientTorrent(ClientTorrent client){
+		this.client				= client;
+		this.listInfoPeerRemote	= new ArrayList<>();
+		this.queueNewsPeer		= new ConcurrentLinkedQueue<>();
+	}
 
+	public Queue<Peer> queueNewsPeer() { return queueNewsPeer; }
 	public ClientTorrent client() { return client;	}
 	public Torrent torrent() { return torrent;	}
 	public Semaphore semaphoreExecutor(){ return this.semaphoreExecutor; }

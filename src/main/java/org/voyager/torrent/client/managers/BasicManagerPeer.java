@@ -33,7 +33,6 @@ import org.voyager.torrent.client.strategy.basic.BasicPeerStrategy;
 
 public class BasicManagerPeer implements ManagerPeer{
 
-    private Torrent torrent;
     private ClientTorrent client;
 
     private ManagerPeerStrategy strategy;
@@ -42,18 +41,15 @@ public class BasicManagerPeer implements ManagerPeer{
     // IO non-blocker
     private Selector selector;
 
-    private final Queue<Peer> queueNewsPeer;
     private final Map<SocketChannel, Peer> mapChannelAndPeer;
 
     public BasicManagerPeer(){
         this.mapChannelAndPeer      = new ConcurrentHashMap<>();
-        this.queueNewsPeer          = new ConcurrentLinkedQueue<>();
     }
 
     public BasicManagerPeer(ClientTorrent client){
         this();
         this.client                 = client;
-        this.torrent                = client.torrent();
     }
 
 
@@ -65,7 +61,8 @@ public class BasicManagerPeer implements ManagerPeer{
         while(!isInterrupted()) {
             try {
 
-                client.semaphoreExecutor().acquire();
+                client.state().semaphoreExecutor().acquire();
+
                 System.out.println("++++++++ ManagerPeer +++++++");
 
                 process();
@@ -73,7 +70,7 @@ public class BasicManagerPeer implements ManagerPeer{
 
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
-                client.semaphoreExecutor().release();
+                client.state().semaphoreExecutor().release();
             }
 
             System.out.println("-------- ManagerPeer -------");
@@ -335,6 +332,7 @@ public class BasicManagerPeer implements ManagerPeer{
     private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
     private boolean isInterrupted(){ return Thread.currentThread().isInterrupted(); }
 
+    public List<Peer> listPeer() { return mapChannelAndPeer.values().stream().collect(Collectors.toList()); }
 
     @Override
     public ClientTorrent client() { return this.client; }
