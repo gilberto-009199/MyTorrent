@@ -14,24 +14,28 @@ import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.net.messages.MsgPiece;
 import org.voyager.torrent.client.net.messages.MsgRequest;
+import org.voyager.torrent.client.strategy.ManagerAnnounceStrategy;
+import org.voyager.torrent.client.strategy.ManagerFileStrategy;
+import org.voyager.torrent.client.strategy.Strategy;
+import org.voyager.torrent.client.strategy.basic.BasicManagerPeerStrategy;
 import org.voyager.torrent.client.util.FileTorrentUtil;
 import org.voyager.torrent.util.FileUtil;
 
 public class BasicManagerFile implements ManagerFile{
 
-    private PiecesMap map;
-    private final Lock lockMap;
     private Torrent torrent;
     private ClientTorrent client;
-    private ManagerPeer managerPeer;
-    private Semaphore semaphoreExecutor;
-    private ManagerAnnounce managerAnnounce;
-    private Queue<MsgPiece> queueRecieveMsgPiece;
 
+    private Queue<MsgPiece> queueRecieveMsgPiece;
     private RandomAccessFile randomAccessFile;
+    private final Lock lockMap;
+    private PiecesMap map;
+
+    private ManagerFileStrategy strategy;
+    private Thread threadCurrent;
 
     // mapped packets MsgPiece
-    private Map<Integer, List<MsgPiece>> mapReciveMsgPiece;
+    private Map<Integer, List<MsgPiece>> mapReceiveMsgPiece;
     private List<MsgRequest> listMsgRequest;
 
     public BasicManagerFile(){
@@ -42,10 +46,9 @@ public class BasicManagerFile implements ManagerFile{
     public BasicManagerFile(ClientTorrent client){
         this();
         this.client                 = client;
-        this.torrent                = client.getTorrent();
-        this.managerPeer            = client.getManagerPeer();
-        this.map                    = new PiecesMap(client.getTorrent());
-        this.mapReciveMsgPiece      = new HashMap<>(this.map.getMap().length);
+        this.torrent                = client.torrent();
+        this.map                    = new PiecesMap(this.torrent);
+        this.mapReceiveMsgPiece      = new HashMap<>(this.map.getMap().length);
     }
 
     @Override
@@ -55,14 +58,14 @@ public class BasicManagerFile implements ManagerFile{
 
         while(!isInterrupted()){
             try {
-                semaphoreExecutor.acquire();
+                client.semaphoreExecutor().acquire();
                 System.out.println("++++++++ ManagerFile +++++++");
 
                 process();
 
             } catch (InterruptedException e) {Thread.currentThread().interrupt(); }
             finally {
-                semaphoreExecutor.release();
+                client.semaphoreExecutor().release();
             }
             System.out.println("-------- ManagerFile -------");
             sleep(1000);
@@ -72,13 +75,13 @@ public class BasicManagerFile implements ManagerFile{
 
     private void process(){
         // process MsgPices recieve in My Queue 
-        processRecieveMsgPiece();
+        processReceiveMsgPiece();
         calcMsgRequest();
         // verify blocks hashes
         // recalcMap and MsgRequest
     }
 
-    private void processRecieveMsgPiece() {
+    private void processReceiveMsgPiece() {
         lockMap.lock();
         try {
 
@@ -233,6 +236,8 @@ public class BasicManagerFile implements ManagerFile{
     @Override
     public List<MsgRequest> msgRequest() { return this.listMsgRequest; }
 
+
+
     @Override
     public ManagerFile withTorrent(Torrent torrent) {
         this.torrent = torrent;
@@ -244,31 +249,30 @@ public class BasicManagerFile implements ManagerFile{
     public Torrent getTorrent() { return torrent; }
     public void setTorrent(Torrent torrent) { this.torrent = torrent; }
 
+
     @Override
-    public ManagerFile withManagerPeer(ManagerPeer managerPeer) {
-        this.managerPeer = managerPeer;
+    public ClientTorrent client() { return this.client; }
+    @Override
+    public ManagerFile setClient(ClientTorrent client) {
+        this.client                 = client;
+        this.map                    = new PiecesMap(client.torrent());
+        //this.mapReciveMsgPiece      = new HashMap<>(this.map.getMap().length);
         return this;
     }
 
     @Override
-    public ManagerFile withManagerAnnounce(ManagerAnnounce managerAnnounce) {
-        this.managerAnnounce = managerAnnounce;
+    public ManagerFileStrategy strategy() { return this.strategy;  }
+    @Override
+    public ManagerFile setStrategy(Strategy strategy) {
+        this.strategy = (ManagerFileStrategy) strategy;
         return this;
     }
 
     @Override
-    public ManagerFile withSemaphoreExecutor(Semaphore semaphoreExecutor) {
-        this.semaphoreExecutor = semaphoreExecutor;
-        return this;
-    }
-
+    public Thread thread() {  return this.threadCurrent; }
     @Override
-    public ManagerFile withClientTorrent(ClientTorrent clientTorrent) {
-        this.client                 = clientTorrent;
-        this.torrent                = clientTorrent.getTorrent();
-        this.managerPeer            = clientTorrent.getManagerPeer();
-        this.map                    = new PiecesMap(clientTorrent.getTorrent());
-        this.mapReciveMsgPiece      = new HashMap<>(this.map.getMap().length);
+    public ManagerFile setThread(Thread thread) {
+        this.threadCurrent = thread;
         return this;
     }
 }

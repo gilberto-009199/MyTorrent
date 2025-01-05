@@ -20,7 +20,8 @@ public class PeerMetrics implements Comparable<PeerMetrics>{
 
 	@Override
 	public int compareTo(PeerMetrics metric) { return PeerMetrics.compare(this, metric); }
-	public static int compare(PeerMetrics m1, PeerMetrics m2) {
+	public static int compare(PeerMetrics m1,
+							  PeerMetrics m2) {
 		return Integer.compare(
 						m1.msgMetrics.compareTo(m2.msgMetrics),
 						m1.bandWidthMetrics.compareTo(m2.bandWidthMetrics)

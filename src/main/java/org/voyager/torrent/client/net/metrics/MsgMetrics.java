@@ -35,7 +35,8 @@ public class MsgMetrics implements Comparable<MsgMetrics>{
 
 	@Override
 	public int compareTo(MsgMetrics metric) { return MsgMetrics.compare(this, metric); }
-	public static int compare(MsgMetrics m1, MsgMetrics m2) {
+	public static int compare(MsgMetrics m1,
+							  MsgMetrics m2) {
 
 		double sum1 =	(1 		* m1.countMsg ) +
 						(2		* m1.countMsgBitfield ) +

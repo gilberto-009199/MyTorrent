@@ -5,8 +5,6 @@ import java.security.MessageDigest;
 
 public class FileTorrentUtil {
 
-
-
 	/**
 	 * Verifica a integridade de uma peça de arquivo com base no índice e no hash SHA-1 esperado.
 	 *
@@ -17,7 +15,11 @@ public class FileTorrentUtil {
 	 * @param fileLength        Tamanho total do arquivo.
 	 * @return true se a peça for válida, false caso contrário.
 	 */
-	public static boolean verify(int index, byte[] expectedHash, RandomAccessFile randomAccessFile, int pieceLength, long fileLength) {
+	public static boolean verify(int index,
+								 byte[] expectedHash,
+								 RandomAccessFile randomAccessFile,
+								 int pieceLength,
+								 long fileLength) {
 		try {
 			// Calcula o deslocamento no arquivo para a peça
 			long offset = (long) index * pieceLength;

@@ -25,7 +25,9 @@ public class MsgPiece implements Msg{
 
     //	<len=0009+X><id=7><index|position><begin><block>
     public MsgPiece(){}
-    public MsgPiece(int position, int begin, byte[] block){
+    public MsgPiece(int position,
+                    int begin,
+                    byte[] block){
         this.position = position;
         this.begin = begin;
         this.end = begin + block.length;

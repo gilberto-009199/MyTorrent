@@ -13,6 +13,7 @@ import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.net.messages.MsgCancel;
 import org.voyager.torrent.client.net.socket.SocketChannelNetwork;
 import org.voyager.torrent.client.peers.BasicPeer;
@@ -21,39 +22,40 @@ import org.voyager.torrent.client.net.exceptions.NoReaderBufferException;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.net.messages.MsgPiece;
 import org.voyager.torrent.client.net.messages.MsgRequest;
+import org.voyager.torrent.client.peers.InfoPeer;
+import org.voyager.torrent.client.peers.Peer;
+import org.voyager.torrent.client.strategy.ManagerAnnounceStrategy;
+import org.voyager.torrent.client.strategy.ManagerFileStrategy;
+import org.voyager.torrent.client.strategy.ManagerPeerStrategy;
+import org.voyager.torrent.client.strategy.Strategy;
+import org.voyager.torrent.client.strategy.basic.BasicManagerPeerStrategy;
+import org.voyager.torrent.client.strategy.basic.BasicPeerStrategy;
 
 public class BasicManagerPeer implements ManagerPeer{
 
     private Torrent torrent;
     private ClientTorrent client;
-    private ManagerFile managerFile;
-    private Semaphore semaphoreExecutor;
-    private ManagerAnnounce managerAnnounce;
+
+    private ManagerPeerStrategy strategy;
+    private Thread threadCurrent;
 
     // IO non-blocker
     private Selector selector;
-    private Queue<BasicPeer> queueNewsPeer;
 
-    // Recieve Msg
-    private Queue<MsgPiece> queueRecieveMsgPiece;
-    private Queue<MsgRequest> queueRecieveMsgRequest;
-
-    private Map<SocketChannel, BasicPeer> mapChannelAndPeer;
+    private final Queue<Peer> queueNewsPeer;
+    private final Map<SocketChannel, Peer> mapChannelAndPeer;
 
     public BasicManagerPeer(){
         this.mapChannelAndPeer      = new ConcurrentHashMap<>();
         this.queueNewsPeer          = new ConcurrentLinkedQueue<>();
-        this.queueRecieveMsgPiece   = new ConcurrentLinkedQueue<>();
-        this.queueRecieveMsgRequest = new ConcurrentLinkedQueue<>();
     }
 
     public BasicManagerPeer(ClientTorrent client){
         this();
         this.client                 = client;
-        this.torrent                = client.getTorrent();
-        this.managerAnnounce        = client.getManagerAnnounce();
-        this.managerFile            = client.getManagerFile();
+        this.torrent                = client.torrent();
     }
+
 
     @Override
     public void run() {
@@ -63,7 +65,7 @@ public class BasicManagerPeer implements ManagerPeer{
         while(!isInterrupted()) {
             try {
 
-                semaphoreExecutor.acquire();
+                client.semaphoreExecutor().acquire();
                 System.out.println("++++++++ ManagerPeer +++++++");
 
                 process();
@@ -71,11 +73,10 @@ public class BasicManagerPeer implements ManagerPeer{
 
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
-                semaphoreExecutor.release();
+                client.semaphoreExecutor().release();
             }
 
             System.out.println("-------- ManagerPeer -------");
-            // sleep calc pela menor latencia dentro dos pares
             sleep(128);
         }
 
@@ -83,17 +84,24 @@ public class BasicManagerPeer implements ManagerPeer{
 
     private void process(){
         processQueueNewsPeer();
+        processLifeCycle();
+        processReceiveMsgPiece();
+        processSendMsgRequest();
+        processReceiveMsgRequest();
+        // @todo process send keep-alive
+    }
 
+    private void processLifeCycle() {
         select();
-        
+
         Set<SelectionKey> selectedKeys = selector.selectedKeys();
         Iterator<SelectionKey> iterator = selectedKeys.iterator();
 
         while (iterator.hasNext()) {
-            
+
             SelectionKey key = iterator.next();
             iterator.remove();
-            
+
             try {
                 if (key.isConnectable()) {
 
@@ -119,18 +127,13 @@ public class BasicManagerPeer implements ManagerPeer{
 
             }
         }
-
-        processReceiveMsgPiece();
-        processSendMsgRequest();
-        processReceiveMsgRequest();
-        // @todo process send keep-alive
     }
 
     // Hook Selector handler for handling completed connections
     public void handlerConnect(SelectionKey key) {
 
         SocketChannel channel = (SocketChannel) key.channel();
-        BasicPeer peer = mapChannelAndPeer.get(channel);
+        Peer peer = mapChannelAndPeer.get(channel);
 
         System.out.println("handlerConnect: "+ peer);
 
@@ -139,8 +142,8 @@ public class BasicManagerPeer implements ManagerPeer{
             // Finalizar a conexão
             if (channel.finishConnect()) {
 
-                peer.setConneted(true);
-                peer.setHandshake(false);
+                peer.statePeer().setConnected(true);
+                peer.statePeer().setHandshake(false);
 
                 System.out.println("\t Conexão estabelecida para o peer: " + peer);
 
@@ -161,7 +164,7 @@ public class BasicManagerPeer implements ManagerPeer{
     // Hook Selector handler for reading from channels
     public void handlerRead(SelectionKey key) throws IOException{
         SocketChannel channel = (SocketChannel) key.channel();
-        BasicPeer peer = mapChannelAndPeer.get(channel);
+        Peer peer = mapChannelAndPeer.get(channel);
 
         boolean isReadable = channel.isConnected() && channel.isOpen();
         boolean notIsReadableThen = !isReadable;
@@ -171,9 +174,7 @@ public class BasicManagerPeer implements ManagerPeer{
 
         try {
 
-            if(peer.isConnected()){
-                peer.readMsg();
-            }
+            if(peer.statePeer().connected()) peer.read();
 
             key.interestOps(SelectionKey.OP_WRITE);
 
@@ -200,7 +201,7 @@ public class BasicManagerPeer implements ManagerPeer{
     // Hook Selector handler for writing to channels
     public void handlerWrite(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
-        BasicPeer peer = mapChannelAndPeer.get(channel);
+        Peer peer = mapChannelAndPeer.get(channel);
 
         boolean isWritable = channel.isConnected() && channel.isOpen();
         boolean notIsWritableThen = !isWritable;
@@ -210,12 +211,8 @@ public class BasicManagerPeer implements ManagerPeer{
 
         try {
             
-            if(peer.isConnected() && !peer.hasHandShake()){
-                peer.writeShake();
-            }
-            if(peer.hasHandShake() && !peer.hasChoked()){
-                peer.processQueueNewMsg();
-            }
+
+            if( peer.statePeer().connected() ) peer.write();
 
             key.interestOps(SelectionKey.OP_READ);
 
@@ -232,7 +229,7 @@ public class BasicManagerPeer implements ManagerPeer{
 
     // Process send Request Pieces in peer
     private void processSendMsgRequest(){
-
+/*
         List<MsgRequest> listMsgRequest = managerFile.msgRequest();
 
         //  peers for sort metrics
@@ -267,15 +264,15 @@ public class BasicManagerPeer implements ManagerPeer{
 
             }
         }
-
+*/
     }
 
     // Process Pieces Recieve from peers
     private void processReceiveMsgPiece(){
-        while(!queueRecieveMsgPiece.isEmpty()){
+       /* while(!queueRecieveMsgPiece.isEmpty()){
             MsgPiece msg = queueRecieveMsgPiece.poll();
             managerFile.queueMsg(msg);
-        }
+        }*/
     }
 
     private void processReceiveMsgRequest(){
@@ -288,20 +285,25 @@ public class BasicManagerPeer implements ManagerPeer{
     private void processQueueNewsPeer(){
         while(!queueNewsPeer.isEmpty()){
 
-            BasicPeer peer = queueNewsPeer.poll();
+            Peer peer = queueNewsPeer.poll();
 
             try{
 
                 SocketChannel channel = SocketChannel.open();
+
                 channel.configureBlocking(false);
-                channel.connect(new InetSocketAddress(peer.getHost(), peer.getPort()));
+
+                InetSocketAddress address = new InetSocketAddress(peer.infoLocal().host(), peer.infoLocal().port());
+
+                channel.connect(address);
                 
                 // 30s for connect and keep-alive
                 channel.socket().setSoTimeout(30000);
                 channel.register(selector, SelectionKey.OP_CONNECT);
 
-                peer.withNetwork( new SocketChannelNetwork(channel) )
-                    .withManagerPeer(this);
+                peer.setStrategy( new BasicPeerStrategy())
+                    .setNetwork(  new SocketChannelNetwork(channel) )
+                    .setManagerPeer(this);
 
                 mapChannelAndPeer.put(channel, peer);
     
@@ -314,29 +316,7 @@ public class BasicManagerPeer implements ManagerPeer{
         }
     }
 
-    // Hooks Queue's
-    //  Queue New Peers from ManagerAnnounce
-    public synchronized void queueNewsPeer(BasicPeer peer) { queueNewsPeer.add(peer); }
-    public synchronized void queueNewsPeerIfNotPresent(BasicPeer peer) {
-        boolean IfPresent = mapChannelAndPeer.containsValue(peer);
-        if(!IfPresent)queueNewsPeer(peer);
-    }
-
-    //  Queue New Msg from Peers
-    @Override
-    public void queueNewMsg(BasicPeer peer, MsgRequest msg) { queueRecieveMsgRequest.add(msg); }
-    @Override
-    public void queueNewMsg(BasicPeer peer, MsgPiece msg) {
-        queueRecieveMsgPiece.add(msg);
-        for(BasicPeer peerSend : mapChannelAndPeer.values()){
-            if(!peerSend.equals(peer)){
-                peerSend.queueNewMsg(new MsgCancel(msg.getPosition(), msg.getBegin(), msg.getEnd()));
-            }
-        }
-    }
-
     // Util selector
-    // @todo Mitigar
     private void select(){ try{ selector.select(); }catch(Exception e){ e.printStackTrace(); } }
 
     // @todo Mitigar
@@ -355,79 +335,28 @@ public class BasicManagerPeer implements ManagerPeer{
     private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
     private boolean isInterrupted(){ return Thread.currentThread().isInterrupted(); }
 
+
     @Override
-    public ManagerPeer withManagerAnnounce(ManagerAnnounce managerAnnounce) {
-        this.managerAnnounce = managerAnnounce;
+    public ClientTorrent client() { return this.client; }
+    @Override
+    public ManagerPeer setClient(ClientTorrent client) {
+        this.client                 = client;
         return this;
     }
 
     @Override
-    public Torrent getTorrent() { return this.torrent; }
-    public ManagerPeer withTorrent(Torrent torrent) {
-        this.torrent = torrent;
+    public ManagerPeerStrategy strategy() { return this.strategy;  }
+    @Override
+    public ManagerPeer setStrategy(Strategy strategy) {
+        this.strategy = (ManagerPeerStrategy) strategy;
         return this;
     }
 
     @Override
-    public boolean connectError(Peer peer) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'connectError'");
-    }
-
+    public Thread thread() {  return this.threadCurrent; }
     @Override
-    public boolean shakeHandsError(Peer peer) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'shakeHandsError'");
-    }
-
-    @Override
-    public boolean downloaded(Peer peer) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'downloaded'");
-    }
-
-    @Override
-    public boolean uploaded(Peer peer) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'uploaded'");
-    }
-
-    @Override
-    public void addInterestPeer(Peer peer) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'addInterestPeer'");
-    }
-
-    @Override
-    public void removeInterestPeer(Peer peer) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'removeInterestPeer'");
-    }
-
-    @Override
-    public ManagerFile getManagerFile() { return this.managerFile;  }
-
-
-
-    @Override
-    public ManagerPeer withManagerFile(ManagerFile managerFile) {
-        this.managerFile = managerFile;
+    public ManagerPeer setThread(Thread thread) {
+        this.threadCurrent = thread;
         return this;
     }
-
-    @Override
-    public ManagerPeer withClientTorrent(ClientTorrent clientTorrent) {
-        this.client                 = clientTorrent;
-        this.torrent                = clientTorrent.getTorrent();
-        this.managerAnnounce        = clientTorrent.getManagerAnnounce();
-        this.managerFile            = clientTorrent.getManagerFile();
-        return this;
-    }
-
-    @Override
-    public ManagerPeer withSemaphoreExecutor(Semaphore semaphoreExecutor) {
-        this.semaphoreExecutor = semaphoreExecutor;
-        return this;
-    }
-
 }

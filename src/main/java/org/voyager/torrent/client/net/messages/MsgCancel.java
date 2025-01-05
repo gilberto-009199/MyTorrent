@@ -18,7 +18,9 @@ public class MsgCancel implements Msg{
 
     //	<len=0013><id=8><index><begin><length>
     public MsgCancel(){}
-    public MsgCancel(int position, int begin, int length){
+    public MsgCancel(int position,
+                     int begin,
+                     int length){
         this.position = position;
         this.begin = begin;
         this.length = length;

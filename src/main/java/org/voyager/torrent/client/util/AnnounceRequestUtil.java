@@ -12,23 +12,30 @@ import java.util.Optional;
 
 import org.voyager.torrent.client.peers.BasicPeer;
 import org.voyager.torrent.client.files.Torrent;
+import org.voyager.torrent.client.peers.InfoPeer;
+import org.voyager.torrent.client.peers.Peer;
+import org.voyager.torrent.client.peers.StatePeer;
 import org.voyager.torrent.util.BinaryUtil;
 import org.voyager.torrent.util.HttpUtil;
 import org.voyager.torrent.util.ReaderBencode;
 
 public class AnnounceRequestUtil {
 
-    public static Optional<List<BasicPeer>> requestAnnounce(Torrent torrent){
+    public static Optional<List<InfoPeer>> requestAnnounce(Torrent torrent){
         return requestAnnounce(torrent.getAnnounceURL(), torrent.genAnnounceParameters(), 0, 3);
     }
 
-    public static Optional<List<BasicPeer>> requestAnnounce(String announce, Map<String, String> parameters){
+    public static Optional<List<InfoPeer>> requestAnnounce(String announce,
+                                                           Map<String, String> parameters){
         return requestAnnounce(announce, parameters, 0, 3);
     }
 
-    public static Optional<List<BasicPeer>> requestAnnounce(String announce, Map<String, String> parameters, int retry, int limit){
+    public static Optional<List<InfoPeer>> requestAnnounce(String announce,
+                                                           Map<String, String> parameters,
+                                                           int retry,
+                                                           int limit){
 
-        List<BasicPeer> listPeer = new ArrayList<BasicPeer>();
+        List<InfoPeer> listPeer = new ArrayList<InfoPeer>();
 
         try{
             URL url_announce = new URL(announce+"?"+HttpUtil.getParamsString(parameters));
@@ -58,11 +65,9 @@ public class AnnounceRequestUtil {
                     System.out.println("Unable to parse encoding");
                     continue;
                 }
-                
+
                 listPeer.add( 
-                    new BasicPeer()
-                    .withHost(ip)
-                    .withPort(peerPort)
+                    new InfoPeer().setHost(ip).setPort(peerPort)
                 ); 
             }
         }catch(Exception e){

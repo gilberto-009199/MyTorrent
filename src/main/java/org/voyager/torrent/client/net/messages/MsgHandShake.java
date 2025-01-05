@@ -41,7 +41,8 @@ public class MsgHandShake implements Msg{
 	public MsgHandShake() {}
 
 	// <Identifilter Protocol><Protocol><Extensions Protocol><info_hash><Peer ID>
-	public MsgHandShake(byte[] infoHash, byte[] peerId) {
+	public MsgHandShake(byte[] infoHash,
+						byte[] peerId) {
 		this.protocol  = PROTOCOL;
 		this.extension = new byte[8];
 		this.infoHash = infoHash;
@@ -57,7 +58,8 @@ public class MsgHandShake implements Msg{
 	public boolean checkHandShake(byte[] packet){ return checkHandShake(packet, this.infoHash);	}
 	public boolean checkHandShake(MsgHandShake msg){ return checkHandShake(msg, this.infoHash); }
 	public boolean checkHandShake(byte[] packet, byte[] infoHash){ return checkHandShake(new MsgHandShake(packet), infoHash); }
-	public static boolean checkHandShake(MsgHandShake msg, byte[] infoHash){
+	public static boolean checkHandShake(MsgHandShake msg,
+										 byte[] infoHash){
 		// verify handshake msg.infoHash == infoHash
 		return Arrays.equals(msg.infoHash, infoHash);
 	}

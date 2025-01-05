@@ -145,7 +145,8 @@ public class SocketChannelNetwork implements Network {
 
 	}
 
-	private void queueMsg(byte id, ByteBuffer content){
+	private void queueMsg(byte id,
+						  ByteBuffer content){
 		System.out.println("Receive: [len: " + content.capacity() + ", id: " + id + "]");
 
 		switch (id) {

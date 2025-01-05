@@ -9,7 +9,7 @@ import org.voyager.torrent.client.net.messages.MsgRequest;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
-public interface ManagerFile extends Runnable{
+public interface ManagerFile extends Manager{
 
     // Actions
     void queueMsg(MsgPiece msg);
@@ -20,11 +20,8 @@ public interface ManagerFile extends Runnable{
     Torrent getTorrent();
     List<MsgRequest> msgRequest();
 
-    // Withs
-    ManagerFile withTorrent(Torrent torrent);
-    ManagerFile withManagerPeer(ManagerPeer managerPeer);
-    ManagerFile withSemaphoreExecutor(Semaphore semaphoreExecutor);
-    ManagerFile withClientTorrent(ClientTorrent clientTorrent);
-    ManagerFile withManagerAnnounce(ManagerAnnounce managerAnnounce);
+    ClientTorrent client();
+    ManagerFile setClient(ClientTorrent client);
+
 
 }

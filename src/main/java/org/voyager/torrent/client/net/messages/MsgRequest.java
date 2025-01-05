@@ -22,7 +22,9 @@ public class MsgRequest implements Msg{
     
     //	<len=0013><id=6><index><begin><length>
     public MsgRequest(){}
-    public MsgRequest(int position, int begin, int length){
+    public MsgRequest(int position,
+                      int begin,
+                      int length){
         this.position = position;
         this.begin = begin;
         this.length = length;

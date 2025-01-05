@@ -1,6 +1,8 @@
 package org.voyager.torrent.client.peers;
 
+import org.voyager.torrent.client.managers.ManagerPeer;
 import org.voyager.torrent.client.net.socket.Network;
+import org.voyager.torrent.client.strategy.PeerStrategy;
 
 import java.io.IOException;
 
@@ -16,6 +18,13 @@ public interface Peer extends Comparable<Peer>{
 	StatePeer statePeer();
 	Peer setStatePeer(StatePeer data);
 	Network network();
+	Peer setNetwork(Network network);
+
+	ManagerPeer managerPeer();
+	Peer setManagerPeer(ManagerPeer managerPeer);
+
+	PeerStrategy strategy();
+	Peer setStrategy(PeerStrategy strategy);
 
 	// Hooks
 	void connected() throws IOException;

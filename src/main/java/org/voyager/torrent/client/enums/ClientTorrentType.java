@@ -125,7 +125,9 @@ public enum ClientTorrentType {
 	String clientName;
 	byte[] rawPeerId;
 
-	ClientTorrentType(String clientId, String clientName, byte[] rawPeerId){
+	ClientTorrentType(String clientId,
+					  String clientName,
+					  byte[] rawPeerId){
 		this.clientId = clientId;
 		this.clientName = clientName;
 		this.rawPeerId = rawPeerId;
