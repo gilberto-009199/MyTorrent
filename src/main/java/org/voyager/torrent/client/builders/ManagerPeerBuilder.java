@@ -1,7 +1,9 @@
 package org.voyager.torrent.client.builders;
 
+import org.voyager.torrent.client.ClientTorrent;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.managers.BasicManagerPeer;
+import org.voyager.torrent.client.managers.ManagerAnnounce;
 import org.voyager.torrent.client.managers.ManagerPeer;
 
 public class ManagerPeerBuilder {
@@ -10,14 +12,12 @@ public class ManagerPeerBuilder {
 	private PeerLimitBuilder peerLimitBuilder;
 	// @todo config keep alive time
 	// @todo add strategy's
-	public ManagerPeer build(){ return build(this.torrent); }
-	public ManagerPeer build(Torrent torrent){
+	public ManagerPeer build(ClientTorrent clientTorrent){ return build(this.torrent, clientTorrent); }
+	public ManagerPeer build(Torrent torrent, ClientTorrent clientTorrent){
 
 		if(peerLimitBuilder == null)peerLimitBuilder = new PeerLimitBuilder();
 
-		ManagerPeer managerPeer = new BasicManagerPeer();
-
-		return managerPeer.withTorrent(torrent);
+		return new BasicManagerPeer(clientTorrent);
 	}
 
 	public ManagerPeerBuilder withPeerLimitBuilder(PeerLimitBuilder peerLimitBuilder){

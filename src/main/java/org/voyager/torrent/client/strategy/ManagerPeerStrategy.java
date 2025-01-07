@@ -1,5 +1,6 @@
 package org.voyager.torrent.client.strategy;
 
+import org.voyager.torrent.client.managers.BasicManagerPeer;
 import org.voyager.torrent.client.managers.ManagerPeer;
 import org.voyager.torrent.client.peers.InfoPeer;
 import org.voyager.torrent.client.peers.Peer;
@@ -14,4 +15,7 @@ public interface ManagerPeerStrategy extends Strategy{
 	void processDisconnected(ManagerPeer managerPeer, Peer peer);
 
 	void hookNewsInfoPeer(ManagerPeer managerPeer);
+
+	InfoPeer processGenereteInfoLocal(ManagerPeer managerPeer, Peer peer);
+
 }

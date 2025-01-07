@@ -13,6 +13,7 @@ import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.StateClientTorrent;
 import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.net.messages.MsgCancel;
 import org.voyager.torrent.client.net.socket.SocketChannelNetwork;
@@ -65,8 +66,12 @@ public class BasicManagerPeer implements ManagerPeer{
 
                 System.out.println("++++++++ ManagerPeer +++++++");
 
-                process();
-
+                processQueueNewsPeer();
+                processLifeCycle();
+                processReceiveMsgPiece();
+                processSendMsgRequest();
+                processReceiveMsgRequest();
+                // @todo process keep alive
 
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
@@ -77,15 +82,6 @@ public class BasicManagerPeer implements ManagerPeer{
             sleep(128);
         }
 
-    }
-
-    private void process(){
-        processQueueNewsPeer();
-        processLifeCycle();
-        processReceiveMsgPiece();
-        processSendMsgRequest();
-        processReceiveMsgRequest();
-        // @todo process send keep-alive
     }
 
     private void processLifeCycle() {
@@ -280,6 +276,10 @@ public class BasicManagerPeer implements ManagerPeer{
 
     // Process Queue
     private void processQueueNewsPeer(){
+        StateClientTorrent state = client().state();
+
+        Queue<Peer> queueNewsPeer = state.queueNewsPeer();
+
         while(!queueNewsPeer.isEmpty()){
 
             Peer peer = queueNewsPeer.poll();
@@ -298,9 +298,11 @@ public class BasicManagerPeer implements ManagerPeer{
                 channel.socket().setSoTimeout(30000);
                 channel.register(selector, SelectionKey.OP_CONNECT);
 
-                peer.setStrategy( new BasicPeerStrategy())
+                peer.setStrategy( strategy().peerStrategy() )
                     .setNetwork(  new SocketChannelNetwork(channel) )
                     .setManagerPeer(this);
+
+                peer.setInfoLocal( strategy.processGenereteInfoLocal( this, peer ) );
 
                 mapChannelAndPeer.put(channel, peer);
     

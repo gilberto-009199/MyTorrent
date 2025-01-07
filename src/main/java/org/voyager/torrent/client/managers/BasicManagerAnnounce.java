@@ -25,8 +25,8 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
 
     private List<InfoPeer> listInfoPeerRemote = new ArrayList<>();
 
-    private int timeReAnnounceInSecond = 32;
-	private int timeVerifyNewsPeersInSecond = 32;
+    private long timeReAnnounceInSecond = 32;
+	private long timeVerifyNewsPeersInSecond = 32;
 
     private Long lastAnnounceTime;
     private Long lastVerifyPeersTime;
@@ -43,7 +43,10 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
                 client.state().semaphoreExecutor().acquire();
                 System.out.println("++++++ ManagerAnounce ++++");
 
-                process();
+                long currentTime = System.currentTimeMillis();
+
+                processAnnounce(currentTime);
+                processAddingNewsPeers(currentTime);
 
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
@@ -51,54 +54,59 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
                 client.state().semaphoreExecutor().release();
             }
 
-            int timeLoop = Math.min(timeReAnnounceInSecond, timeVerifyNewsPeersInSecond) * 1000;
+            long timeLoop = Math.min(timeReAnnounceInSecond, timeVerifyNewsPeersInSecond) * 1000;
             sleep(timeLoop);
         }
     }
 
     private void initAnnounce() {
-        this.lastAnnounceTime       = System.currentTimeMillis() - timeReAnnounceInSecond       * 1000;
-        this.lastVerifyPeersTime    = System.currentTimeMillis() - timeVerifyNewsPeersInSecond  * 1000;
+        this.lastAnnounceTime       = System.currentTimeMillis() - (timeReAnnounceInSecond       * 1000);
+        this.lastVerifyPeersTime    = System.currentTimeMillis() - (timeVerifyNewsPeersInSecond  * 1000);
     }
 
+    public void processAnnounce(long currentTime){
 
-    public void process(){
+        if(!timeReAnnounceInSecondThen(currentTime))return;
 
-        long currentTime = System.currentTimeMillis();
-
-        // if timeReAnnounceInSecond
-        if((currentTime - lastAnnounceTime) >= timeReAnnounceInSecond * 1000) {
-
-            List<InfoPeer> listInfoPeer = AnnounceRequestUtil
+        List<InfoPeer> listInfoPeer = AnnounceRequestUtil
                     .requestAnnounce(client.state().torrent())
                     .orElse(new ArrayList<>(0));
 
-            strategy.hookNewListInfoPeer(this, listInfoPeer);
-
-            lastAnnounceTime = currentTime;
-        }
-    
-        // if timeVerifyNewsPeersInSecond
-        if((currentTime - lastVerifyPeersTime) >= timeVerifyNewsPeersInSecond * 1000) {
-
-            strategy.hookAnnounce(this);
-
-            lastVerifyPeersTime = currentTime;
-        }
-
+        strategy.hookNewListInfoPeer(this, listInfoPeer);
     }
 
+    public void processAddingNewsPeers(long currentTime){
+        if(!timeVerifyNewsPeersInSecondThen(currentTime))return;
+
+        strategy.hookAnnounce(this);
+    }
+
+    public boolean timeReAnnounceInSecondThen(long currentTime){
+        if((currentTime - lastAnnounceTime) >= timeReAnnounceInSecond * 1000) {
+            lastAnnounceTime = currentTime;
+            return true;
+        }
+        return false;
+    }
+
+    public boolean timeVerifyNewsPeersInSecondThen(long currentTime){
+        if((currentTime - lastVerifyPeersTime) >= timeVerifyNewsPeersInSecond * 1000) {
+            lastVerifyPeersTime = currentTime;
+            return true;
+        }
+        return false;
+    }
     private void sleep(long ms){ try{Thread.sleep(ms);}catch (Exception e) {}  }
     private boolean isInterrupted(){ return Thread.currentThread().isInterrupted(); }
 
-    public int timeReAnnounceInSecond() { return timeReAnnounceInSecond; }
-    public BasicManagerAnnounce setTimeReAnnounceInSecond(int timeReAnnounceInSecond) {
+    public long timeReAnnounceInSecond() { return timeReAnnounceInSecond; }
+    public BasicManagerAnnounce setTimeReAnnounceInSecond(long timeReAnnounceInSecond) {
         this.timeReAnnounceInSecond = timeReAnnounceInSecond;
         return this;
     }
 
-    public int timeVerifyNewsPeersInSecond() { return timeVerifyNewsPeersInSecond;  }
-    public BasicManagerAnnounce setTimeVerifyNewsPeersInSecond(int timeVerifyNewsPeersInSecond) {
+    public long timeVerifyNewsPeersInSecond() { return timeVerifyNewsPeersInSecond;  }
+    public BasicManagerAnnounce setTimeVerifyNewsPeersInSecond(long timeVerifyNewsPeersInSecond) {
         this.timeVerifyNewsPeersInSecond = timeVerifyNewsPeersInSecond;
         return this;
     }

@@ -7,6 +7,7 @@ import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.managers.ManagerAnnounce;
 import org.voyager.torrent.client.managers.ManagerFile;
 import org.voyager.torrent.client.managers.ManagerPeer;
+import org.voyager.torrent.client.strategy.ClientStrategy;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
@@ -17,6 +18,7 @@ public class ClientTorrentBuilder {
 	private ManagerAnnounceBuilder managerAnnounceBuilder;
 	private ManagerFileBuilder managerFileBuilder;
 	private ManagerPeerBuilder managerPeerBuilder;
+	private ClientStrategyBuilder clientStrategyBuilder;
 
 	// Build logic
 	public ClientTorrent build(){ return build(this.torrent); }
@@ -28,14 +30,15 @@ public class ClientTorrentBuilder {
 		if(managerFileBuilder == null)managerFileBuilder 			= new ManagerFileBuilder();
 		if(managerAnnounceBuilder == null)managerAnnounceBuilder 	= new ManagerAnnounceBuilder();
 
-		ManagerFile		managerFile		= managerFileBuilder.build(torrent);
-		ManagerPeer		managerPeer		= managerPeerBuilder.build(torrent);
-		ManagerAnnounce managerAnnounce = managerAnnounceBuilder.build(torrent);
+		ClientTorrent client = new ClientTorrent(torrent);
 
-		return new ClientTorrent(torrent)
-					.withManagerFile(managerFile)
-					.withManagerPeer(managerPeer)
-					.withManagerAnnounce(managerAnnounce);
+		ManagerFile		managerFile		= managerFileBuilder.build(torrent, client);
+		ManagerPeer		managerPeer		= managerPeerBuilder.build(torrent, client);
+		ManagerAnnounce managerAnnounce = managerAnnounceBuilder.build(torrent, client);
+
+		return client.setManagerFile(managerFile)
+					.setManagerPeer(managerPeer)
+					.setManagerAnnounce(managerAnnounce);
 	}
 
 	public static ClientTorrentBuilder of(String fileOrMagnetLink){
