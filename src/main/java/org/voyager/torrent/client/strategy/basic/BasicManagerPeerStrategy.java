@@ -1,6 +1,7 @@
 package org.voyager.torrent.client.strategy.basic;
 
 import org.voyager.torrent.client.StateClientTorrent;
+import org.voyager.torrent.client.enums.ClientTorrentType;
 import org.voyager.torrent.client.managers.ManagerPeer;
 import org.voyager.torrent.client.peers.BasicPeer;
 import org.voyager.torrent.client.peers.InfoPeer;
@@ -55,5 +56,15 @@ public class BasicManagerPeerStrategy implements ManagerPeerStrategy {
 			);
 
 		}
+	}
+
+	@Override
+	public InfoPeer processGenereteInfoLocal(ManagerPeer managerPeer, Peer peer) {
+		return new InfoPeer()
+				.setInfoHash(managerPeer.client().state().torrent().getInfoHash())
+				.setPeerId(ClientTorrentType.transmission.genereteRawPeerId())
+				.setClientType(ClientTorrentType.transmission)
+				.setPort(-1)
+				.setHost(null);
 	}
 }

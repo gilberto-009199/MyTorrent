@@ -38,7 +38,7 @@ public class BasicManagerFile implements ManagerFile{
     private Map<Integer, List<MsgPiece>> mapReceiveMsgPiece;
     private List<MsgRequest> listMsgRequest;
 
-    public BasicManagerFile(){
+    private BasicManagerFile(){
         this.listMsgRequest         = new ArrayList<>();
         this.lockMap                = new ReentrantLock();
         this.queueRecieveMsgPiece   = new ConcurrentLinkedQueue<>();
@@ -61,7 +61,8 @@ public class BasicManagerFile implements ManagerFile{
                 client.state().semaphoreExecutor().acquire();
                 System.out.println("++++++++ ManagerFile +++++++");
 
-                process();
+                processReceiveMsgPiece();
+                calcMsgRequest();
 
             } catch (InterruptedException e) {Thread.currentThread().interrupt(); }
             finally {
@@ -72,14 +73,6 @@ public class BasicManagerFile implements ManagerFile{
         }
     }
 
-
-    private void process(){
-        // process MsgPices recieve in My Queue 
-        processReceiveMsgPiece();
-        calcMsgRequest();
-        // verify blocks hashes
-        // recalcMap and MsgRequest
-    }
 
     private void processReceiveMsgPiece() {
         lockMap.lock();
@@ -96,8 +89,8 @@ public class BasicManagerFile implements ManagerFile{
                 randomAccessFile.seek(offset + begin);
                 randomAccessFile.write(piece.getBlock());
 
-                mapReciveMsgPiece.putIfAbsent(piece.getPosition(), new ArrayList<>());
-                mapReciveMsgPiece.get(piece.getPosition()).add(piece);
+                mapReceiveMsgPiece.putIfAbsent(piece.getPosition(), new ArrayList<>());
+                mapReceiveMsgPiece.get(piece.getPosition()).add(piece);
 
                 System.out.println("Piece: "+ piece);
                 System.out.println(" offset: "+ offset);
@@ -143,11 +136,9 @@ public class BasicManagerFile implements ManagerFile{
 
         List<MsgRequest> listMsgRequests = new ArrayList<>();
 
-        if(mapReciveMsgPiece == null)this.mapReciveMsgPiece = new HashMap<>();
-        
-        mapReciveMsgPiece.putIfAbsent(piece, new ArrayList<>());
+        mapReceiveMsgPiece.putIfAbsent(piece, new ArrayList<>());
 
-        List<MsgPiece> listBlockPiece = mapReciveMsgPiece.get(piece);
+        List<MsgPiece> listBlockPiece = mapReceiveMsgPiece.get(piece);
 
         int pieceSize = map.getSizePiece(); // Supondo que 'map' contém informações sobre o tamanho das peças
         int blockSize = map.sizeBlock;
@@ -238,12 +229,6 @@ public class BasicManagerFile implements ManagerFile{
 
 
 
-    @Override
-    public ManagerFile withTorrent(Torrent torrent) {
-        this.torrent = torrent;
-        return this;
-    }
-
     public void setMap(PiecesMap map) { this.map = map; }
 
     public Torrent getTorrent() { return torrent; }
@@ -255,8 +240,8 @@ public class BasicManagerFile implements ManagerFile{
     @Override
     public ManagerFile setClient(ClientTorrent client) {
         this.client                 = client;
-        this.map                    = new PiecesMap(client.torrent());
-        //this.mapReciveMsgPiece      = new HashMap<>(this.map.getMap().length);
+        this.map                    = new PiecesMap(client.state().torrent());
+        this.mapReceiveMsgPiece      = new HashMap<>(this.map.getMap().length);
         return this;
     }
 

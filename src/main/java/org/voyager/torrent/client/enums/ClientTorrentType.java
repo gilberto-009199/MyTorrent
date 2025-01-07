@@ -168,6 +168,21 @@ public enum ClientTorrentType {
 		return noIdentification; // Cliente desconhecido
 	}
 
+	public byte[] genereteRawPeerId(){
+		// O peerId precisa ter exatamente 20 bytes
+		String clientPrefix = "-" + this.clientId + "-";
+
+		// Gera o restante como uma sequência aleatória de números e letras
+		int remainingLength = 20 - clientPrefix.length();
+		StringBuilder randomPart = new StringBuilder();
+		for (int i = 0; i < remainingLength; i++) {
+			randomPart.append((char) ('A' + (int) (Math.random() * 26)));
+		}
+
+		String peerId = clientPrefix + randomPart.toString();
+		return peerId.getBytes();
+	}
+
 	/**
 	 * Representação do tipo de cliente como string.
 	 *

@@ -1,5 +1,6 @@
 package org.voyager.torrent.client.builders;
 
+import org.voyager.torrent.client.ClientTorrent;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.managers.BasicManagerFile;
 import org.voyager.torrent.client.managers.ManagerFile;
@@ -11,12 +12,12 @@ public class ManagerFileBuilder {
 
 	// @todo add strategy's
 
-	public ManagerFile build(){ return build(this.torrent); }
-	public ManagerFile build(Torrent torrent){
+	public ManagerFile build(ClientTorrent clientTorrent){ return build(this.torrent, clientTorrent); }
+	public ManagerFile build(Torrent torrent, ClientTorrent clientTorrent){
 
-		ManagerFile managerFile = new BasicManagerFile();
+		ManagerFile managerFile = new BasicManagerFile(clientTorrent);
 
-		return managerFile.withTorrent(torrent);
+		return managerFile;
 	}
 
 	private ManagerFileBuilder withTorrent(Torrent torrent) {

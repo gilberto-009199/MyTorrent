@@ -31,6 +31,6 @@ public class BasicManagerAnnounceStrategy implements ManagerAnnounceStrategy {
 		ClientTorrent client = managerAnnounce.client();
 		ManagerPeer managerPeer = client.managerPeer();
 
-		managerPeer.strategy().processNewsInfoPeer(managerPeer);
+		managerPeer.strategy().hookNewsInfoPeer(managerPeer);
 	}
 }

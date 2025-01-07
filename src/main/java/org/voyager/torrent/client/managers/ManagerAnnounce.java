@@ -10,11 +10,11 @@ import org.voyager.torrent.client.strategy.ManagerPeerStrategy;
 public interface ManagerAnnounce extends Manager{
 
     // Getters
-    int timeVerifyNewsPeersInSecond();
-    ManagerAnnounce setTimeVerifyNewsPeersInSecond(int timeVerifyNewsPeersInSecond);
+    long timeVerifyNewsPeersInSecond();
+    ManagerAnnounce setTimeVerifyNewsPeersInSecond(long timeVerifyNewsPeersInSecond);
 
-    int timeReAnnounceInSecond();
-    ManagerAnnounce setTimeReAnnounceInSecond(int timeReAnnounceInSecond);
+    long timeReAnnounceInSecond();
+    ManagerAnnounce setTimeReAnnounceInSecond(long timeReAnnounceInSecond);
 
     ManagerAnnounceStrategy strategy();
 
