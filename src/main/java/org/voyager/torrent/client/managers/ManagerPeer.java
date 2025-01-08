@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.net.limits.PeerLimit;
 import org.voyager.torrent.client.peers.BasicPeer;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.net.messages.MsgPiece;
@@ -20,5 +21,7 @@ public interface ManagerPeer extends Manager {
 	ClientTorrent client();
 	ManagerPeerStrategy strategy();
 	ManagerPeer setClient(ClientTorrent client);
+	ManagerPeer setLimit(PeerLimit limit);
+	PeerLimit limit();
 
 }

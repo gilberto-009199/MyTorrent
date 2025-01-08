@@ -79,9 +79,7 @@ public class BasicPeerStrategy implements PeerStrategy {
 
 	// Read MsgHandShake
 	private void readMsgHandShake(Peer peer) throws IOException {
-
-
-
+		// AQUI GIL
 		NetworkResult result = peer.network().queueReader().get();
 
 		if(!result.success())return;
@@ -101,4 +99,8 @@ public class BasicPeerStrategy implements PeerStrategy {
 		processMsgStrategy.hookReceive(peer, msg);
 	}
 
+	public PeerStrategy setProcessMsgStrategy(ProcessMsgStrategy processMsgStrategy) {
+		this.processMsgStrategy = processMsgStrategy;
+		return this;
+	}
 }

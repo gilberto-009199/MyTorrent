@@ -5,6 +5,7 @@ import org.voyager.torrent.client.builders.PeerLimitBuilder;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.managers.BasicManagerPeer;
 import org.voyager.torrent.client.managers.ManagerPeer;
+import org.voyager.torrent.client.net.limits.PeerLimit;
 
 public class ManagerPeerBuilder {
 
@@ -17,7 +18,10 @@ public class ManagerPeerBuilder {
 
 		if(peerLimitBuilder == null)peerLimitBuilder = new PeerLimitBuilder();
 
-		return new BasicManagerPeer(clientTorrent);
+		PeerLimit limit = peerLimitBuilder.build();
+
+		return new BasicManagerPeer(clientTorrent)
+				.setLimit(limit);
 	}
 
 	public ManagerPeerBuilder withPeerLimitBuilder(PeerLimitBuilder peerLimitBuilder){

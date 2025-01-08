@@ -8,8 +8,8 @@ import org.voyager.torrent.client.managers.ManagerAnnounce;
 public class ManagerAnnounceBuilder {
 
 	private Torrent torrent;
-	private int timeReAnnounceInSecond;
-	private int timeVerifyNewsPeersInSecond;
+	private int timeReAnnounceInSecond = 32;
+	private int timeVerifyNewsPeersInSecond = 32;
 
 	// @todo add strategy's
 

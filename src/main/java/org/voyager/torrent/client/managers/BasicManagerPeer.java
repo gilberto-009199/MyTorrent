@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.voyager.torrent.client.ClientTorrent;
 import org.voyager.torrent.client.StateClientTorrent;
 import org.voyager.torrent.client.files.PiecesMap;
+import org.voyager.torrent.client.net.limits.PeerLimit;
 import org.voyager.torrent.client.net.messages.MsgCancel;
 import org.voyager.torrent.client.net.socket.SocketChannelNetwork;
 import org.voyager.torrent.client.peers.BasicPeer;
@@ -25,6 +26,7 @@ import org.voyager.torrent.client.net.messages.MsgPiece;
 import org.voyager.torrent.client.net.messages.MsgRequest;
 import org.voyager.torrent.client.peers.InfoPeer;
 import org.voyager.torrent.client.peers.Peer;
+import org.voyager.torrent.client.peers.StatePeer;
 import org.voyager.torrent.client.strategy.ManagerAnnounceStrategy;
 import org.voyager.torrent.client.strategy.ManagerFileStrategy;
 import org.voyager.torrent.client.strategy.ManagerPeerStrategy;
@@ -36,6 +38,7 @@ public class BasicManagerPeer implements ManagerPeer{
 
     private ClientTorrent client;
 
+    private PeerLimit limit;
     private ManagerPeerStrategy strategy;
     private Thread threadCurrent;
 
@@ -68,17 +71,20 @@ public class BasicManagerPeer implements ManagerPeer{
 
                 processQueueNewsPeer();
                 processLifeCycle();
-                processReceiveMsgPiece();
-                processSendMsgRequest();
-                processReceiveMsgRequest();
+                //processReceiveMsgPiece();
+                //processSendMsgRequest();
+                //processReceiveMsgRequest();
                 // @todo process keep alive
 
-            } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
-              finally {
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                Thread.currentThread().interrupt();
+            } finally {
+                System.out.println("-------- ManagerPeer -------");
                 client.state().semaphoreExecutor().release();
             }
 
-            System.out.println("-------- ManagerPeer -------");
+
             sleep(128);
         }
 
@@ -279,35 +285,35 @@ public class BasicManagerPeer implements ManagerPeer{
         StateClientTorrent state = client().state();
 
         Queue<Peer> queueNewsPeer = state.queueNewsPeer();
-
-        while(!queueNewsPeer.isEmpty()){
-
-            Peer peer = queueNewsPeer.poll();
-
+        for(Peer peer: queueNewsPeer){
             try{
+
+                if(!strategy().validNewPeerForConnect(this, peer))continue;
 
                 SocketChannel channel = SocketChannel.open();
 
                 channel.configureBlocking(false);
 
-                InetSocketAddress address = new InetSocketAddress(peer.infoLocal().host(), peer.infoLocal().port());
+                InetSocketAddress address = new InetSocketAddress(peer.infoRemote().host(), peer.infoRemote().port());
 
                 channel.connect(address);
-                
+
                 // 30s for connect and keep-alive
                 channel.socket().setSoTimeout(30000);
                 channel.register(selector, SelectionKey.OP_CONNECT);
 
+                // @todo add peer Builder for build
                 peer.setStrategy( strategy().peerStrategy() )
-                    .setNetwork(  new SocketChannelNetwork(channel) )
-                    .setManagerPeer(this);
+                        .setNetwork(  new SocketChannelNetwork(channel) )
+                        .setManagerPeer(this)
+                        .setStatePeer(new StatePeer().setLimits(limit));
 
                 peer.setInfoLocal( strategy.processGenereteInfoLocal( this, peer ) );
 
                 mapChannelAndPeer.put(channel, peer);
-    
+
                 System.out.println("Peer registry: " + peer);
-    
+
             } catch (IOException e) {
                 System.err.println("Erro ao registrar peer: " + peer);
                 e.printStackTrace();
@@ -357,6 +363,14 @@ public class BasicManagerPeer implements ManagerPeer{
     @Override
     public ManagerPeer setThread(Thread thread) {
         this.threadCurrent = thread;
+        return this;
+    }
+
+    @Override
+    public PeerLimit limit(){ return this.limit; }
+    @Override
+    public ManagerPeer setLimit(PeerLimit limit) {
+        this.limit = limit;
         return this;
     }
 }

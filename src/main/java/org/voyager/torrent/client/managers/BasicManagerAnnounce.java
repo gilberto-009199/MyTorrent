@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Semaphore;
+import java.util.stream.Collectors;
 
 import org.voyager.torrent.client.ClientTorrent;
 import org.voyager.torrent.client.files.PiecesMap;
@@ -41,7 +42,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
         while(!isInterrupted()){
             try{
                 client.state().semaphoreExecutor().acquire();
-                System.out.println("++++++ ManagerAnounce ++++");
+                System.out.println("++++++ ManagerAnnounce ++++");
 
                 long currentTime = System.currentTimeMillis();
 
@@ -50,7 +51,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
 
             } catch (InterruptedException e) {  Thread.currentThread().interrupt();  } 
               finally {
-                System.out.println("------ ManagerAnounce ----");
+                System.out.println("------ ManagerAnnounce ----");
                 client.state().semaphoreExecutor().release();
             }
 
@@ -73,6 +74,7 @@ public class BasicManagerAnnounce implements ManagerAnnounce{
                     .orElse(new ArrayList<>(0));
 
         strategy.hookNewListInfoPeer(this, listInfoPeer);
+
     }
 
     public void processAddingNewsPeers(long currentTime){

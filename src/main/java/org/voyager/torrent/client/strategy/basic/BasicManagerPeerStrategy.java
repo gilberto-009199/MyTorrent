@@ -2,6 +2,7 @@ package org.voyager.torrent.client.strategy.basic;
 
 import org.voyager.torrent.client.StateClientTorrent;
 import org.voyager.torrent.client.enums.ClientTorrentType;
+import org.voyager.torrent.client.managers.BasicManagerPeer;
 import org.voyager.torrent.client.managers.ManagerPeer;
 import org.voyager.torrent.client.peers.BasicPeer;
 import org.voyager.torrent.client.peers.InfoPeer;
@@ -66,5 +67,18 @@ public class BasicManagerPeerStrategy implements ManagerPeerStrategy {
 				.setClientType(ClientTorrentType.transmission)
 				.setPort(-1)
 				.setHost(null);
+	}
+
+	@Override
+	public boolean validNewPeerForConnect(ManagerPeer managerPeer, Peer peer) {
+
+		boolean inCurrentPeerConnected = managerPeer.listPeer().stream().anyMatch(peerCurrent -> peerCurrent.infoRemote().equals(peer.infoRemote()));
+
+		return !inCurrentPeerConnected;
+	}
+
+	public ManagerPeerStrategy setPeerStrategy(PeerStrategy peerStrategy) {
+		this.peerStrategy = peerStrategy;
+		return this;
 	}
 }
