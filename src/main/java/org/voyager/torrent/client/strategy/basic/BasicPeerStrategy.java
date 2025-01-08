@@ -24,12 +24,13 @@ public class BasicPeerStrategy implements PeerStrategy {
 	public void hookRead(Peer peer) throws IOException {
 		if(!peer.network().isReadable())return;
 
-		peer.network().nextRead();
 
 		if(!peer.statePeer().handshake()){
 			readMsgHandShake(peer);
 			return;
 		}
+
+		peer.network().nextRead();
 
 		Optional<NetworkResult> optMsg = peer.network().queueReader();
 
@@ -49,13 +50,11 @@ public class BasicPeerStrategy implements PeerStrategy {
 
 		if(!peer.network().isWritable())return;
 
-		peer.network().nextWrite();
-
 		if(!peer.statePeer().handshake()){
 			writeMsgHandShake(peer);
-			return;
 		}
 
+		peer.network().nextWrite();
 
 		// process queue
 		// logic
@@ -80,23 +79,31 @@ public class BasicPeerStrategy implements PeerStrategy {
 	// Read MsgHandShake
 	private void readMsgHandShake(Peer peer) throws IOException {
 		// AQUI GIL
-		NetworkResult result = peer.network().queueReader().get();
+		peer.network()
+		.readHandshake()
+		.doOnSuccess(result -> {
 
-		if(!result.success())return;
-		if(!(result.msg() instanceof MsgHandShake))return;
 
-		MsgHandShake msg = (MsgHandShake) result.msg();
+			if(!result.success())return;
+			if(!(result.msg() instanceof MsgHandShake))return;
 
-		peer.infoRemote().setPeerId(msg.getPeerId());
-		peer.infoRemote().setClientType(msg.getClientType());
+			MsgHandShake msg = (MsgHandShake) result.msg();
 
-		boolean infoHashValid = MsgHandShake.checkHandShake(msg, peer.infoLocal().infoHash());
+			peer.infoRemote().setPeerId(msg.getPeerId());
+			peer.infoRemote().setClientType(msg.getClientType());
 
-		peer.statePeer().setHandshake(infoHashValid);
+			boolean infoHashValid = MsgHandShake.checkHandShake(msg, peer.infoLocal().infoHash());
 
-		if(!infoHashValid)return;
+			peer.statePeer().setHandshake(infoHashValid);
 
-		processMsgStrategy.hookReceive(peer, msg);
+			if(!infoHashValid)return;
+
+			processMsgStrategy.hookReceive(peer, msg);
+
+		}).doOnError(throwable -> {
+
+		}).subscribe();
+
 	}
 
 	public PeerStrategy setProcessMsgStrategy(ProcessMsgStrategy processMsgStrategy) {

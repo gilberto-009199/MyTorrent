@@ -56,6 +56,11 @@ public class SocketNetwork implements Network {
 		return Optional.empty();
 	}
 
+	@Override
+	public Single<NetworkResult> readHandshake() {
+		return null;
+	}
+
 
 	private void closeConnection() throws IOException {
 		if (socket != null && !socket.isClosed()) {

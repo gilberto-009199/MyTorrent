@@ -147,7 +147,7 @@ public class BasicManagerPeer implements ManagerPeer{
                 System.out.println("\t Conexão estabelecida para o peer: " + peer);
 
                 // Registrar interesse em escrita para enviar handshake
-                key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+                key.interestOps(SelectionKey.OP_WRITE);
 
             }
 
@@ -173,9 +173,13 @@ public class BasicManagerPeer implements ManagerPeer{
 
         try {
 
-            if(peer.statePeer().connected()) peer.read();
+            if(peer.statePeer().connected()){
+                peer.read();
 
-            key.interestOps(SelectionKey.OP_WRITE);
+
+            }
+
+            if(key.isValid()) key.interestOps(SelectionKey.OP_WRITE);
 
         } catch (NoReaderBufferException e) {
             System.err.println("Erro durante leitura do peer: " + peer);
@@ -211,9 +215,11 @@ public class BasicManagerPeer implements ManagerPeer{
         try {
             
 
-            if( peer.statePeer().connected() ) peer.write();
+            if( peer.statePeer().connected() ){
+                peer.write();
+            }
 
-            key.interestOps(SelectionKey.OP_READ);
+            if(key.isValid()) key.interestOps(SelectionKey.OP_READ);
 
         } catch (IOException e) {
             System.err.println("Erro durante leitura do peer: " + peer);

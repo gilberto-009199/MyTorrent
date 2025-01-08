@@ -46,11 +46,11 @@ public class InfoPeer {
 
 	public String toString() {
 		return "InfoPeer[" +
-				"infoHash: "+ (infoHash != null ? Arrays.toString(infoHash) :"[]") +
-				", peerId: "+ (peerId != null 	? new String(peerId, StandardCharsets.UTF_8): "") +
-				", host: "+   host	+
-				", port:" +   port	+
+				" host: "+   host	+
+				", port: "+   port	+
 				", ClientType: [" + (clientType) +"]"+
+				", infoHash: "+ (infoHash != null ? Arrays.toString(infoHash) :"[]") +
+				", peerId: "+ (peerId != null 	? new String(peerId, StandardCharsets.UTF_8): "") +
 				"]";
 	}
 }
