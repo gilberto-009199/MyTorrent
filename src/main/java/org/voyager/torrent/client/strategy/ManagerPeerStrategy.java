@@ -18,4 +18,5 @@ public interface ManagerPeerStrategy extends Strategy{
 
 	InfoPeer processGenereteInfoLocal(ManagerPeer managerPeer, Peer peer);
 
+	boolean validNewPeerForConnect(ManagerPeer basicManagerPeer, Peer peer);
 }

@@ -16,7 +16,7 @@ public class StatePeer {
 	private PiecesMap piecesMap;
 
 	// Data Limit and metrics
-	private PeerMetrics metrics;
+	private PeerMetrics metrics = new PeerMetrics();
 	private PeerLimit limits;
 
 	public boolean handshake() { return handshake; }
@@ -38,7 +38,10 @@ public class StatePeer {
 	public void setMetrics(PeerMetrics metrics) { this.metrics = metrics; }
 
 	public PeerLimit limits() { return limits; }
-	public void setLimits(PeerLimit limits) { this.limits = limits; }
+	public StatePeer setLimits(PeerLimit limits) {
+		this.limits = limits;
+		return this;
+	}
 
 	public String toString() {
 		return "StatePeer[" +
