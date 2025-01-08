@@ -64,14 +64,14 @@ public class ClientTorrent{
 			managerFile.thread().start();
 		}
 
-		if (managerPeer.thread() == null || !managerPeer.thread().isAlive()) {
-			managerPeer.setThread( new Thread(managerPeer, "ManagerPeerThread") );
-			managerPeer.thread().start();
-		}
-
 		if (managerAnnounce.thread() == null || !managerAnnounce.thread().isAlive()) {
 			managerAnnounce.setThread( new Thread(managerAnnounce, "ManagerAnnounceThread") );
 			managerAnnounce.thread().start();
+		}
+
+		if (managerPeer.thread() == null || !managerPeer.thread().isAlive()) {
+			managerPeer.setThread( new Thread(managerPeer, "ManagerPeerThread") );
+			managerPeer.thread().start();
 		}
 
     }

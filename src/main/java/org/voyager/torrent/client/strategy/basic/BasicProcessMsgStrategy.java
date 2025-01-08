@@ -1,5 +1,6 @@
 package org.voyager.torrent.client.strategy.basic;
 
+import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.net.limits.BandWidthLimit;
 import org.voyager.torrent.client.net.messages.*;
 import org.voyager.torrent.client.net.metrics.BandWidthMetrics;
@@ -13,8 +14,6 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	@Override
 	public void hookReceive(Peer peer,
 							Msg msg) {
-
-		if(peer.network().isReadable())return;
 
 		BandWidthMetrics bandMetric = peer.statePeer().metrics().bandWidthMetrics;
 		MsgMetrics msgMetric = peer.statePeer().metrics().msgMetrics;
@@ -84,6 +83,12 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 		metric.countMsgBitfield++;
 
 		peer.statePeer().setPiecesMap(msg.map());
+
+		// send bitfield
+		PiecesMap map = peer.managerPeer().client().managerFile().getMap();
+
+		peer.network().queueWriter(new MsgBitfield(map));
+
 	}
 
 	@Override
@@ -162,7 +167,7 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 		peer.network()
 		.queueWriter(msg)
 		.doOnSuccess(result -> {
-
+			System.out.println("Result: "+ result);
 			if(!result.success())return;
 
 		}).doOnError(ex ->{

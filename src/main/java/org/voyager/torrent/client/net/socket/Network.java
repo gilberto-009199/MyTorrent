@@ -18,4 +18,5 @@ public interface Network{
 	Single<NetworkResult> queueWriter(Msg msg);
 	Optional<NetworkResult> queueReader();
 
+	Single<NetworkResult> readHandshake();
 }

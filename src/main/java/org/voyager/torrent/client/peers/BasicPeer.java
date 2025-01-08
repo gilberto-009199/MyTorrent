@@ -115,8 +115,8 @@ public class BasicPeer implements Peer{
 
 	public String toString() {
 		return "BasicPeer[" +
-				"infoLocal: "+		infoLocal +
-				", infoRemote: "+	infoRemote +
+				"infoRemote: "+	infoRemote +
+				", infoLocal: "+		infoLocal +
 				", state: "+ 		state + "]";
 	}
 

@@ -64,21 +64,23 @@ public class SocketChannelNetwork implements Network {
 				queueMsgWriter.remove(currentMsg);
 				currentMsg		= null;
 				currentBuffer 	= null;
-				emitter.onError(new NonWritableChannelException());
+				emitter.tryOnError(new NonWritableChannelException());
+			}
+
+			if(!currentBuffer.hasRemaining()) {
+				emitter.onSuccess(new NetworkResult(true));
+				currentMsg		= null;
+				currentBuffer 	= null;
 			}
 
 		}catch (IOException ex){
 			queueMsgWriter.remove(currentMsg);
 			currentMsg		= null;
 			currentBuffer 	= null;
-			emitter.onError( ex );
+			if(emitter.isDisposed())emitter.tryOnError( ex );
 		}
 
-		if(!currentBuffer.hasRemaining()) {
-			emitter.onSuccess(null);
-			currentMsg		= null;
-			currentBuffer 	= null;
-		}
+
 
 	}
 
@@ -105,6 +107,7 @@ public class SocketChannelNetwork implements Network {
 			boolean isKeepAlive = length == 0;
 
 			if (isKeepAlive) return;
+
 
 			ByteBuffer contentBuffer = ByteBuffer.allocate(length);
 
@@ -139,11 +142,13 @@ public class SocketChannelNetwork implements Network {
 
 		if (queueMsgReader.isEmpty()) return Optional.empty();
 
-		NetworkResult result = new NetworkResult(queueMsgReader.peek()).setSuccess(true);
+		NetworkResult result = new NetworkResult(queueMsgReader.poll()).setSuccess(true);
 
 		return Optional.of(result);
 
 	}
+
+
 
 	private void queueMsg(byte id,
 						  ByteBuffer content){
@@ -169,6 +174,51 @@ public class SocketChannelNetwork implements Network {
 
 	}
 
+	@Override
+	public Single<NetworkResult> readHandshake() {
+		return Single.create(event -> {
+			if (!isReadable()) event.onSuccess( new NetworkResult(false) );
+
+			try {
+
+				ByteBuffer contentBuffer = ByteBuffer.allocate(68);
+
+				int bytesRead = socketChannel.read(contentBuffer);
+
+				boolean closeConnected = bytesRead == -1;
+				boolean emptyBuffer = bytesRead == 0;
+
+				if (closeConnected) closeConnection();
+				if (closeConnected || emptyBuffer) {
+					event.onSuccess( new NetworkResult(false) );
+					return;
+				}
+
+				((Buffer) contentBuffer).flip();
+
+				int length = contentBuffer.getInt();
+
+				boolean isKeepAlive = length == 0;
+
+				if (isKeepAlive) {
+					event.onSuccess( new NetworkResult(false) );
+					return;
+				}
+
+				Msg msg = new MsgHandShake(contentBuffer.array());
+
+				event.onSuccess(
+						new NetworkResult(
+								true,
+								msg
+						)
+				);
+
+			} catch (Exception ex) {  event.tryOnError(ex);	}
+
+		});
+
+	}
 
 	public Single<ByteBuffer> readFull(ByteBuffer contentBuffer) {
 		return Single.create(emitter -> {
@@ -177,7 +227,7 @@ public class SocketChannelNetwork implements Network {
 					int bytesRead = socketChannel.read(contentBuffer);
 
 					if (bytesRead == -1) {
-						emitter.onError(new EOFException("SocketChannel was closed before reading the full buffer."));
+						emitter.tryOnError(new EOFException("SocketChannel was closed before reading the full buffer."));
 						return;
 					}
 
@@ -191,7 +241,7 @@ public class SocketChannelNetwork implements Network {
 
 			} catch (IOException e) {
 				// Notifica erro ao emitter.
-				emitter.onError(e);
+				emitter.tryOnError(e);
 			}
 		});
 	}
