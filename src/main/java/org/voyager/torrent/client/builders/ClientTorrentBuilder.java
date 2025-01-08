@@ -1,7 +1,10 @@
 package org.voyager.torrent.client.builders;
 
-import jdk.nashorn.internal.runtime.regexp.joni.constants.Arguments;
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.builders.managers.ManagerAnnounceBuilder;
+import org.voyager.torrent.client.builders.managers.ManagerFileBuilder;
+import org.voyager.torrent.client.builders.managers.ManagerPeerBuilder;
+import org.voyager.torrent.client.builders.strategies.ClientStrategyBuilder;
 import org.voyager.torrent.client.files.MagnetLink;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.managers.ManagerAnnounce;
@@ -29,16 +32,19 @@ public class ClientTorrentBuilder {
 		if(managerPeerBuilder == null)managerPeerBuilder 			= new ManagerPeerBuilder();
 		if(managerFileBuilder == null)managerFileBuilder 			= new ManagerFileBuilder();
 		if(managerAnnounceBuilder == null)managerAnnounceBuilder 	= new ManagerAnnounceBuilder();
+		if(clientStrategyBuilder == null)clientStrategyBuilder 		= new ClientStrategyBuilder();
 
 		ClientTorrent client = new ClientTorrent(torrent);
 
 		ManagerFile		managerFile		= managerFileBuilder.build(torrent, client);
 		ManagerPeer		managerPeer		= managerPeerBuilder.build(torrent, client);
 		ManagerAnnounce managerAnnounce = managerAnnounceBuilder.build(torrent, client);
+		ClientStrategy 	strategy 		= clientStrategyBuilder.build(client);
 
 		return client.setManagerFile(managerFile)
 					.setManagerPeer(managerPeer)
-					.setManagerAnnounce(managerAnnounce);
+					.setManagerAnnounce(managerAnnounce)
+					.setStrategy(strategy);
 	}
 
 	public static ClientTorrentBuilder of(String fileOrMagnetLink){
