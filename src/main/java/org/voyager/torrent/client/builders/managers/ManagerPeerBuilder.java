@@ -1,9 +1,9 @@
-package org.voyager.torrent.client.builders;
+package org.voyager.torrent.client.builders.managers;
 
 import org.voyager.torrent.client.ClientTorrent;
+import org.voyager.torrent.client.builders.PeerLimitBuilder;
 import org.voyager.torrent.client.files.Torrent;
 import org.voyager.torrent.client.managers.BasicManagerPeer;
-import org.voyager.torrent.client.managers.ManagerAnnounce;
 import org.voyager.torrent.client.managers.ManagerPeer;
 
 public class ManagerPeerBuilder {

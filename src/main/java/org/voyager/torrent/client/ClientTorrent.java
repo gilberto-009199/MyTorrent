@@ -131,4 +131,10 @@ public class ClientTorrent{
 		this.managerPeer = managerPeer;
 		return this;
 	}
+
+	public ClientStrategy strategy(){ return strategy; }
+	public ClientTorrent setStrategy(ClientStrategy strategy) {
+		this.strategy = strategy;
+		return this;
+	}
 }
