@@ -2,7 +2,6 @@ package org.voyager.torrent.client.strategy.basic;
 
 import org.voyager.torrent.client.StateClientTorrent;
 import org.voyager.torrent.client.enums.ClientTorrentType;
-import org.voyager.torrent.client.managers.BasicManagerPeer;
 import org.voyager.torrent.client.managers.ManagerPeer;
 import org.voyager.torrent.client.peers.BasicPeer;
 import org.voyager.torrent.client.peers.InfoPeer;

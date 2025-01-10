@@ -1,6 +1,8 @@
 package org.voyager.torrent.client.strategy;
 
+import io.reactivex.rxjava3.core.Single;
 import org.voyager.torrent.client.net.messages.*;
+import org.voyager.torrent.client.net.socket.NetworkResult;
 import org.voyager.torrent.client.peers.Peer;
 
 public interface ProcessMsgStrategy extends Strategy{
@@ -17,16 +19,16 @@ public interface ProcessMsgStrategy extends Strategy{
 	void hookReceive(Peer peer, MsgPort msg);
 	void hookReceive(Peer peer, MsgHave msg);
 
-	void hookSend(Peer peer, Msg msg);
-	void hookSend(Peer peer, MsgHandShake msg);
-	void hookSend(Peer peer, MsgChoke msg);
-	void hookSend(Peer peer, MsgUnChoke msg);
-	void hookSend(Peer peer, MsgRequest msg);
-	void hookSend(Peer peer, MsgBitfield msg);
-	void hookSend(Peer peer, MsgCancel msg);
-	void hookSend(Peer peer, MsgNotInterested msg);
-	void hookSend(Peer peer, MsgInterested msg);
-	void hookSend(Peer peer, MsgPort msg);
-	void hookSend(Peer peer, MsgHave msg);
+	Single<NetworkResult> hookSend(Peer peer, Msg msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgHandShake msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgChoke msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgUnChoke msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgRequest msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgBitfield msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgCancel msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgNotInterested msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgInterested msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgPort msg);
+	Single<NetworkResult> hookSend(Peer peer, MsgHave msg);
 
 }

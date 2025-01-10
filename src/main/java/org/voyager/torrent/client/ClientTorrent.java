@@ -59,6 +59,7 @@ public class ClientTorrent{
 
     // Resume or start the threads
     public void resume() {
+
 		if (managerFile.thread() == null || !managerFile.thread().isAlive()) {
 			managerFile.setThread( new Thread(managerFile, "ManagerFileThread") );
 			managerFile.thread().start();

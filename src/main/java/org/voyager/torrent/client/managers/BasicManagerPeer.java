@@ -68,6 +68,9 @@ public class BasicManagerPeer implements ManagerPeer{
                 client.state().semaphoreExecutor().acquire();
 
                 System.out.println("++++++++ ManagerPeer +++++++");
+                System.out.println(" Peers Connected: "+ listPeer().stream().filter(peer -> peer.statePeer().connected()).count());
+                System.out.println(" Peers Handshake: "+ listPeer().stream().filter(peer -> peer.statePeer().handshake()).count());
+                System.out.println(" Peers UnChoked: "+ listPeer().stream().filter(peer -> !peer.statePeer().choked()).count());
 
                 processQueueNewsPeer();
                 processLifeCycle();
@@ -75,6 +78,7 @@ public class BasicManagerPeer implements ManagerPeer{
                 //processSendMsgRequest();
                 //processReceiveMsgRequest();
                 // @todo process keep alive
+                // @todo process remove peer with conneted == false
 
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -147,16 +151,15 @@ public class BasicManagerPeer implements ManagerPeer{
                 System.out.println("\t Conexão estabelecida para o peer: " + peer);
 
                 // Registrar interesse em escrita para enviar handshake
-                key.interestOps(SelectionKey.OP_WRITE);
+                if(key.isValid())key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
 
             }
 
         } catch (IOException e) {
-            System.err.println("Erro na conexão ou handshake: \t"+ e.getMessage());
-            closeChannel(channel);
+            System.err.println(peer + "\n + Erro na conexão ou handshake: \t"+ e.getMessage());
             mapChannelAndPeer.remove(channel);
+            closeChannel(channel);
             key.cancel();
-
         }
     }
 
@@ -165,9 +168,11 @@ public class BasicManagerPeer implements ManagerPeer{
         SocketChannel channel = (SocketChannel) key.channel();
         Peer peer = mapChannelAndPeer.get(channel);
 
+
+
         boolean isReadable = channel.isConnected() && channel.isOpen();
         boolean notIsReadableThen = !isReadable;
-        if(notIsReadableThen)return;
+        if(notIsReadableThen) return;
 
         System.out.println("handlerRead: "+ peer);
 
@@ -205,6 +210,7 @@ public class BasicManagerPeer implements ManagerPeer{
     public void handlerWrite(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
         Peer peer = mapChannelAndPeer.get(channel);
+
 
         boolean isWritable = channel.isConnected() && channel.isOpen();
         boolean notIsWritableThen = !isWritable;
@@ -287,6 +293,7 @@ public class BasicManagerPeer implements ManagerPeer{
     }
 
     // Process Queue
+    // @todo add limit connections current
     private void processQueueNewsPeer(){
         StateClientTorrent state = client().state();
 

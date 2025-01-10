@@ -40,9 +40,8 @@ public class SocketChannelNetwork implements Network {
 	@Override
 	public boolean isWritable() { return isOpen() && socketChannel.isConnected() && !socketChannel.isBlocking();}
 	@Override
-
-
 	public  void nextWrite() {
+		//Validar A logica
 		boolean noEmptyBufferAndNotRemaining = currentBuffer != null && !currentBuffer.hasRemaining();
 		boolean noEmptyQueue = !queueMsgWriter.isEmpty();
 
@@ -126,7 +125,9 @@ public class SocketChannelNetwork implements Network {
 			})
 			.subscribe();
 
-		} catch (Exception ex) {	}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
 
 	}
 
@@ -214,8 +215,10 @@ public class SocketChannelNetwork implements Network {
 						)
 				);
 
-			} catch (Exception ex) {  event.tryOnError(ex);	}
-
+			} catch (Exception ex) {
+				ex.printStackTrace();
+				event.onError(ex);
+			}
 		});
 
 	}
@@ -239,9 +242,8 @@ public class SocketChannelNetwork implements Network {
 				// A leitura foi completada com sucesso.
 				emitter.onSuccess(contentBuffer);
 
-			} catch (IOException e) {
-				// Notifica erro ao emitter.
-				emitter.tryOnError(e);
+			} catch (IOException ex) {
+				ex.printStackTrace();
 			}
 		});
 	}
