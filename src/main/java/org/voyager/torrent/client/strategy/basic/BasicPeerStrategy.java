@@ -102,6 +102,10 @@ public class BasicPeerStrategy implements PeerStrategy {
 
 		}).doOnError(throwable -> {
 
+			if(!(throwable instanceof IOException))return;
+
+			peer.statePeer().setConnected(false);
+
 		}).subscribe();
 
 	}

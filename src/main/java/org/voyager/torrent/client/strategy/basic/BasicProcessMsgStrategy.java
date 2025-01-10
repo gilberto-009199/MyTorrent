@@ -1,11 +1,13 @@
 package org.voyager.torrent.client.strategy.basic;
 
+import io.reactivex.rxjava3.core.Single;
 import org.voyager.torrent.client.files.PiecesMap;
 import org.voyager.torrent.client.net.limits.BandWidthLimit;
 import org.voyager.torrent.client.net.messages.*;
 import org.voyager.torrent.client.net.metrics.BandWidthMetrics;
 import org.voyager.torrent.client.net.metrics.MsgMetrics;
 import org.voyager.torrent.client.net.socket.Network;
+import org.voyager.torrent.client.net.socket.NetworkResult;
 import org.voyager.torrent.client.peers.Peer;
 import org.voyager.torrent.client.strategy.ProcessMsgStrategy;
 
@@ -86,8 +88,9 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 
 		// send bitfield
 		PiecesMap map = peer.managerPeer().client().managerFile().getMap();
+		Msg msgSend = new MsgBitfield(map);
 
-		peer.network().queueWriter(new MsgBitfield(map));
+		hookSend(peer, msgSend);
 
 	}
 
@@ -96,6 +99,7 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 							MsgCancel msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgCancel++;
+		// cancel msg request
 	}
 
 	@Override
@@ -132,200 +136,127 @@ public class BasicProcessMsgStrategy implements ProcessMsgStrategy {
 	}
 
 	@Override
-	public void hookSend(Peer peer,
-						 Msg msg) {
-
-		if(peer.network().isWritable())return;
+	public Single<NetworkResult> hookSend(Peer peer,
+										  Msg msg) {
 
 		BandWidthLimit limit = peer.statePeer().limits().bandWidthLimit;
 		BandWidthMetrics metric = peer.statePeer().metrics().bandWidthMetrics;
 
-		if(!limit.tryConsume(msg))return;
+		if(peer.network().isWritable() || !limit.tryConsume(msg)){
+			return Single.create(emitter ->{
+				emitter.onSuccess(new NetworkResult(false));
+			});
+		}
 
 		metric.addUploaderBytes(msg.length());
 
-		if(msg instanceof  MsgPort)hookSend(peer, (MsgPort) msg);
-		else if(msg instanceof  MsgHave)hookSend(peer, (MsgHave) msg);
-		else if(msg instanceof  MsgChoke)hookSend(peer, (MsgChoke) msg);
-		else if(msg instanceof  MsgCancel)hookSend(peer, (MsgCancel) msg);
-		else if(msg instanceof  MsgUnChoke)hookSend(peer, (MsgUnChoke) msg);
-		else if(msg instanceof  MsgRequest)hookSend(peer, (MsgRequest) msg);
-		else if(msg instanceof  MsgBitfield)hookSend(peer, (MsgBitfield) msg);
-		else if(msg instanceof  MsgHandShake)hookSend(peer, (MsgHandShake) msg);
-		else if(msg instanceof  MsgInterested)hookSend(peer, (MsgInterested) msg);
-		else if(msg instanceof  MsgNotInterested)hookSend(peer, (MsgNotInterested) msg);
-		else peer.network().queueWriter(msg);
+		if(msg instanceof  MsgPort)return hookSend(peer, (MsgPort) msg);
+		else if(msg instanceof  MsgHave)return hookSend(peer, (MsgHave) msg);
+		else if(msg instanceof  MsgChoke)return hookSend(peer, (MsgChoke) msg);
+		else if(msg instanceof  MsgCancel)return hookSend(peer, (MsgCancel) msg);
+		else if(msg instanceof  MsgUnChoke)return hookSend(peer, (MsgUnChoke) msg);
+		else if(msg instanceof  MsgRequest)return hookSend(peer, (MsgRequest) msg);
+		else if(msg instanceof  MsgBitfield)return hookSend(peer, (MsgBitfield) msg);
+		else if(msg instanceof  MsgHandShake)return hookSend(peer, (MsgHandShake) msg);
+		else if(msg instanceof  MsgInterested)return hookSend(peer, (MsgInterested) msg);
+		else if(msg instanceof  MsgNotInterested)return hookSend(peer, (MsgNotInterested) msg);
+		else return peer.network().queueWriter(msg);
 
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgHandShake msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgHandShake++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-			System.out.println("Result: "+ result);
-			if(!result.success())return;
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgChoke msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgChoke++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgUnChoke msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgUnChoke++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgRequest msg) {
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgRequest++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgBitfield msg) {
+
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgBitfield++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgCancel msg) {
+
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgCancel++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgNotInterested msg) {
+
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgNotInterest++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgInterested msg) {
+
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgInterest++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgPort msg) {
+
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgPort++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 
 	@Override
-	public void hookSend(Peer peer,
+	public Single<NetworkResult> hookSend(Peer peer,
 						 MsgHave msg) {
+
 		MsgMetrics metric = peer.statePeer().metrics().msgMetrics;
 		metric.countMsgHave++;
 
-		peer.network()
-		.queueWriter(msg)
-		.doOnSuccess(result -> {
-
-
-		}).doOnError(ex ->{
-
-
-		}).subscribe();
+		return peer.network().queueWriter(msg);
 	}
 }
