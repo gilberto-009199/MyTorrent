@@ -41,6 +41,7 @@ Tarefas/Tasks:
 	
 	
 "Jamais deixe que um Deus ou um Demonio, ou mesmo um Sociedade, determine o alcance da sua liberdade, sua vida e somente sua"
+
 Gil
 
 
