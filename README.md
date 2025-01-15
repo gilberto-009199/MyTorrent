@@ -40,6 +40,7 @@ Tarefas/Tasks:
 [WikiBitTorrent](https://wiki.theory.org/Main_Page)
 	
 	
-
+"Jamais deixe que um Deus ou um Demonio, ou mesmo um Sociedade, determine o alcance da sua liberdade, sua vida e somente sua"
+Gil
 
 
